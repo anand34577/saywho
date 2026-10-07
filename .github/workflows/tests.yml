@@ -23,6 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: bash -n install.sh && bash -n run.sh && bash -n scripts/check_npu.sh
+      - run: bash -n install.sh && bash -n run.sh && bash -n scripts/check_npu.sh && sh -n docker/rknn-entrypoint.sh
       # one profile at a time, as used (the services share a container name on purpose)
-      - run: for p in cpu gpu npu; do docker compose --profile $p config --quiet; done
+      - run: for p in cpu cuda rknn; do docker compose --profile $p config --quiet; done

@@ -1,13 +1,19 @@
-# Nemotron-3-Diarization server for CPU (x86_64 / arm64) or NVIDIA GPU. Rockchip NPU boards: Dockerfile.rknn.
-#
-#   docker compose --profile cpu up -d --build      (or --profile gpu; see docker-compose.yml)
+# syntax=docker/dockerfile:1
+# Nemotron-3-Diarization server for CPU or NVIDIA GPU, linux/amd64 and linux/arm64. Rockchip NPU: Dockerfile.rknn.
+# Prebuilt images: ghcr.io/anand34577/nemotron-diarization:cpu and :cuda (see docs/DOCKER.md).
 #
 #   docker build -t nemotron-diarization:cpu .
-#   docker build -t nemotron-diarization:gpu --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu126 .
+#   docker build -t nemotron-diarization:cuda --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu129 .
 FROM python:3.11-slim-bookworm
 
+# cpu: https://download.pytorch.org/whl/cpu. cuda: .../whl/cu129, the CUDA build with wheels for both amd64 and arm64
 ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
 ARG TORCH_VERSION=2.8.0
+
+LABEL org.opencontainers.image.title="Nemotron Diarization" \
+      org.opencontainers.image.description="Speaker diarization API and web UI (nvidia/Nemotron-3-Diarization). Third-party licenses in /licenses." \
+      org.opencontainers.image.source="https://github.com/anand34577/nemotron-diarization" \
+      org.opencontainers.image.licenses="Apache-2.0"
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -26,16 +32,28 @@ RUN pip install torch==${TORCH_VERSION} --index-url ${TORCH_INDEX}
 COPY requirements.txt /tmp/requirements.txt
 RUN grep -v imageio-ffmpeg /tmp/requirements.txt > /tmp/req.txt && pip install -r /tmp/req.txt
 
-# model config, processor and weights baked into the image: starts offline, no download at runtime
-RUN python -c "from huggingface_hub import snapshot_download; \
-snapshot_download('nvidia/Nemotron-3-Diarization', allow_patterns=['*.json', 'model.safetensors'])"
+# model config, processor and weights baked in (starts offline); the model card is kept as its notice of origin
+RUN python - <<'EOF'
+import os, shutil
+from huggingface_hub import snapshot_download
+path = snapshot_download("nvidia/Nemotron-3-Diarization", allow_patterns=["*.json", "model.safetensors", "README.md"])
+os.makedirs("/licenses", exist_ok=True)
+shutil.copy(os.path.join(path, "README.md"), "/licenses/Nemotron-3-Diarization-MODEL_CARD.md")
+EOF
 ENV HF_HUB_OFFLINE=1
+
+# license inventory of everything installed (pip-licenses runs from a throwaway venv, so it is not in the image)
+RUN python -m venv /tmp/pl && /tmp/pl/bin/pip install -q pip-licenses \
+ && /tmp/pl/bin/pip-licenses --python /usr/local/bin/python --from=mixed --with-urls --with-license-file \
+      --no-license-path --format=plain-vertical > /licenses/python-packages.txt \
+ && rm -rf /tmp/pl \
+ && dpkg-query -W -f='${Package} ${Version}\n' > /licenses/debian-packages.txt
+COPY --chmod=644 LICENSE NOTICE THIRD_PARTY_NOTICES.md licenses/OpenMDW-1.1.txt /licenses/
 
 RUN useradd --create-home --uid 1000 app
 WORKDIR /app
 COPY app.py diar_engine.py settings.py segmentation.py audio_io.py timing.py ./
 COPY static ./static
-COPY samples/meeting.wav ./samples/meeting.wav
 USER app
 
 EXPOSE 7860

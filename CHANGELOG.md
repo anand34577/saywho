@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.0 - 2026-10-07
+
+### Added
+- Prebuilt Docker images on ghcr.io: `cpu` (amd64 + arm64), `cuda` (amd64 + arm64, CUDA 12.9) and `rknn` (arm64,
+  RKNN models included), built and smoke-tested by `.github/workflows/docker.yml` for every release.
+- `docs/DOCKER.md`: running every image, compose, every environment variable, GPU/NPU host setup, troubleshooting.
+- Licensing: the project is now under Apache-2.0 (`LICENSE`, `NOTICE`); `THIRD_PARTY_NOTICES.md` and `licenses/`
+  cover the model (OpenMDW-1.1) and bundled software. Every image has license texts and full package inventories
+  in `/licenses`.
+- Responsible-use notes in the README.
+
+### Changed
+- The Rockchip NPU runtime is no longer bundled (Rockchip's RKNN SDK License). It is downloaded from Rockchip after
+  you accept that license: `RKNN_ACCEPT_LICENSE=yes` in Docker, or the prompt in `./install.sh rknn`
+  (`scripts/fetch_rknn_runtime.py`). Without it the server runs on the CPU.
+- Compose profiles are renamed to match the image tags: `cpu`, `cuda`, `rknn` (were `cpu`, `gpu`, `npu`).
+  `docker compose up` now pulls the prebuilt image; add `--build` to build locally.
+- The CUDA image uses the CUDA 12.9 build of PyTorch (`cu129`), the only one with arm64 wheels.
+- Sample recordings are no longer copied into the images.
+
 ## 2.0.0 - 2026-10-07
 
 ### Added

@@ -7,4 +7,7 @@ soundfile
 fastapi
 uvicorn
 python-multipart
-rknn-toolkit-lite2==2.3.2
+# dependencies of rknn-toolkit-lite2. The package itself is under Rockchip's RKNN SDK License and is installed
+# separately by scripts/fetch_rknn_runtime.py once that license is accepted.
+psutil
+ruamel.yaml

@@ -1,11 +1,12 @@
-# Pick the hardware with a profile:
+# Prebuilt images from ghcr.io; pick one with a profile (docs/DOCKER.md has the details):
 #
-#   docker compose --profile cpu up -d --build    any x86_64 / arm64 machine
-#   docker compose --profile gpu up -d --build    NVIDIA GPU (needs the NVIDIA Container Toolkit)
-#   docker compose --profile npu up -d            Rockchip RK3566/68/76/88 board (prebuilt image, or add --build)
+#   docker compose --profile cpu  up -d     any x86_64 / arm64 machine
+#   docker compose --profile cuda up -d     NVIDIA GPU (needs the NVIDIA Container Toolkit)
+#   docker compose --profile rknn up -d     Rockchip RK3566/68/76/88 board (set RKNN_ACCEPT_LICENSE=yes in .env)
 #
-# Or put COMPOSE_PROFILES=cpu|gpu|npu in .env and just run `docker compose up -d`.
-# Settings come from .env (see .env.example); the UI/API is on http://<host>:${PORT:-7860}.
+# Or put COMPOSE_PROFILES=cpu|cuda|rknn in .env and run `docker compose up -d`.
+# Add --build to build the image from this folder instead of pulling it.
+# Settings come from .env (see .env.example); UI and API on http://<host>:${PORT:-7860}.
 
 x-env: &env
   HOST: 0.0.0.0
@@ -20,6 +21,7 @@ x-env: &env
   CUDA_DEVICE: ${CUDA_DEVICE:-0}
   NPU_CORE_MASK: ${NPU_CORE_MASK:-all}
   RK_PLATFORM: ${RK_PLATFORM:-}
+  RKNN_ACCEPT_LICENSE: ${RKNN_ACCEPT_LICENSE:-no}
   MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-2048}
   MAX_AUDIO_MINUTES: ${MAX_AUDIO_MINUTES:-0}
   MAX_QUEUED_JOBS: ${MAX_QUEUED_JOBS:-100}
@@ -31,21 +33,21 @@ x-env: &env
 services:
   cpu:
     profiles: [cpu]
+    image: ghcr.io/anand34577/nemotron-diarization:cpu${IMAGE_VERSION:+-$IMAGE_VERSION}
     build: .
-    image: nemotron-diarization:cpu
     container_name: nemotron-diarization
     ports:
       - "${PORT:-7860}:7860"
     environment: *env
     restart: unless-stopped
 
-  gpu:
-    profiles: [gpu]
+  cuda:
+    profiles: [cuda]
+    image: ghcr.io/anand34577/nemotron-diarization:cuda${IMAGE_VERSION:+-$IMAGE_VERSION}
     build:
       context: .
       args:
-        TORCH_INDEX: https://download.pytorch.org/whl/cu126
-    image: nemotron-diarization:gpu
+        TORCH_INDEX: https://download.pytorch.org/whl/cu129
     container_name: nemotron-diarization
     ports:
       - "${PORT:-7860}:7860"
@@ -59,16 +61,22 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
-  npu:
-    profiles: [npu]
+  rknn:
+    profiles: [rknn]
+    image: ghcr.io/anand34577/nemotron-diarization:rknn${IMAGE_VERSION:+-$IMAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.rknn
-    image: nemotron-diarization:rknn
     container_name: nemotron-diarization
     # NPU access: /dev/dri (rknpu DRM node) and the device tree (SoC detection)
     privileged: true
     ports:
       - "${PORT:-7860}:7860"
     environment: *env
+    volumes:
+      - rknn-runtime:/opt/rknn      # Rockchip runtime, downloaded once on first start
+    # cpuset: "4-7"                 # optional: pin to the big cores (check with lscpu)
     restart: unless-stopped
+
+volumes:
+  rknn-runtime:
