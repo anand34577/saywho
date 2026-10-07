@@ -12,8 +12,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install fastapi uvicorn python-multipart numpy soundfile httpx imageio-ffmpeg
@@ -22,6 +22,7 @@ jobs:
   lint-shell:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: bash -n install.sh && bash -n run.sh && bash -n scripts/check_npu.sh
-      - run: docker compose --profile cpu --profile gpu --profile npu config --quiet
+      # one profile at a time, as used (the services share a container name on purpose)
+      - run: for p in cpu gpu npu; do docker compose --profile $p config --quiet; done
