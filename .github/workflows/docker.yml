@@ -6,11 +6,21 @@ name: docker
 #   rknn  linux/arm64
 # A version tag (v2.1.0) publishes <variant>, <variant>-2.1.0, <variant>-2.1 and latest (= cpu).
 # A manual run publishes <variant>-edge only, for testing.
+# Pull requests that touch the images build and smoke-test them but publish no tags.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "Dockerfile*"
+      - ".dockerignore"
+      - "requirements*.txt"
+      - "docker/**"
+      - "scripts/fetch_rknn_runtime.py"
+      - "*.py"
+      - ".github/workflows/docker.yml"
 
 permissions:
   contents: read
@@ -101,6 +111,7 @@ jobs:
   publish:
     name: publish ${{ matrix.variant }}
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     strategy:
       matrix:
