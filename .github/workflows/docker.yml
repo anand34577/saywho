@@ -92,7 +92,7 @@ jobs:
           python3 -c "import wave,random; w=wave.open('/tmp/t.wav','wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(random.getrandbits(8) for _ in range(16000*2*3))); w.close()"
           curl -sf -F file=@/tmp/t.wav localhost:7860/api/v1/diarize | python3 -c "import json,sys; r=json.load(sys.stdin); print('backend', r['backend'], 'duration', r['duration'], 'timings', r['timings']['total'])"
           docker exec smoke ls /licenses
-          docker exec smoke python -c "import torch; print('torch', torch.__version__, 'cuda archs', torch.cuda.get_arch_list())"
+          docker exec smoke python -c "import torch; print('torch', torch.__version__, 'compiled cuda archs:', torch._C._cuda_getArchFlags() if torch.version.cuda else 'none')"
           docker logs smoke 2>&1 | tail -20
           docker rm -f smoke
 
