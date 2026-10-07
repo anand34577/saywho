@@ -5,7 +5,7 @@ Prebuilt images are published to the GitHub Container Registry. No login, no clo
 | Image | Platforms | Hardware | Notes |
 |---|---|---|---|
 | `ghcr.io/anand34577/nemotron-diarization:cpu` | linux/amd64, linux/arm64 | any CPU | also tagged `latest` |
-| `ghcr.io/anand34577/nemotron-diarization:cuda` | linux/amd64, linux/arm64 | NVIDIA GPU (Volta / compute capability 7.0 or newer), CUDA 12.9 | falls back to the CPU if no GPU is visible |
+| `ghcr.io/anand34577/nemotron-diarization:cuda` | linux/amd64, linux/arm64 | NVIDIA GPU, CUDA 12.9: amd64 from compute capability 7.0 (Volta, Turing, Ampere, Ada, Hopper, Blackwell); arm64 from 8.0 (A100, GH200, Blackwell) | falls back to the CPU if no GPU is visible |
 | `ghcr.io/anand34577/nemotron-diarization:rknn` | linux/arm64 | Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | runtime downloaded from Rockchip on first start, see [Rockchip](#rockchip-npu-rknn) |
 
 Every image contains the model (`nvidia/Nemotron-3-Diarization`), so containers start offline. Each image also
@@ -36,7 +36,7 @@ curl -F file=@meeting.mp4 http://localhost:7860/api/v1/diarize
 ### NVIDIA GPU (`cuda`)
 
 Requirements on the host:
-1. NVIDIA driver 525 or newer (`nvidia-smi` works). Driver 575 or newer is recommended for CUDA 12.9.
+1. An NVIDIA driver that supports CUDA 12.9 (version 575 or newer; check with `nvidia-smi`).
 2. The [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
    Check it with `docker run --rm --gpus all ubuntu nvidia-smi`. On Windows, Docker Desktop with the WSL 2 backend
    only needs the Windows NVIDIA driver.
@@ -49,8 +49,14 @@ docker run -d --name nemotron-diarization --gpus all -p 7860:7860 --restart unle
 `curl localhost:7860/api/v1/info` should show `"backend": "cuda"`. If it shows `cpu`, `fallbacks` says why. The usual
 cause is a missing `--gpus all` or a missing Container Toolkit.
 
-The arm64 `cuda` image is for arm64 servers with standard NVIDIA GPUs (for example Grace Hopper and DGX Spark). It
-does **not** run on Jetson boards, which use a different CUDA stack (JetPack); use the `cpu` image there.
+Supported GPUs follow from the CUDA architectures compiled into PyTorch 2.8 (cu129):
+- **amd64:** `sm_70` to `sm_120`, which covers GTX 16xx and RTX 20xx through RTX 50xx, V100, T4, A100, L4, H100
+  and B200. Pascal and older cards (GTX 10xx, P100) are not supported; use the `cpu` image for them.
+- **arm64:** `sm_80`, `sm_90`, `sm_100` and `sm_120`, for arm64 servers with data-center GPUs (for example Grace
+  Hopper or Grace Blackwell).
+
+The arm64 image does **not** run on Jetson boards, which use a different CUDA stack (JetPack); use the `cpu` image
+there.
 
 ### Rockchip NPU (`rknn`)
 
@@ -228,6 +234,7 @@ Each image contains the license texts and full package inventories in `/licenses
 | `pull access denied` / `denied` from ghcr.io | Check the image name and tag. While the package is private, run `docker login ghcr.io` with a token that has `read:packages` |
 | `cuda` image runs on the CPU | Add `--gpus all` (compose already reserves the GPUs), install the NVIDIA Container Toolkit, and check `/api/v1/info` → `fallbacks` |
 | `could not select device driver "nvidia"` | The NVIDIA Container Toolkit is missing on the host |
+| `cuda` fails with "no kernel image is available" | The GPU is older than the image supports. Check with `nvidia-smi --query-gpu=compute_cap --format=csv`; below 7.0 (amd64) or 8.0 (arm64), use the `cpu` image, or a native install with an older PyTorch build |
 | `rknn` runs on the CPU | `fallbacks` gives the reason: no `RKNN_ACCEPT_LICENSE=yes`, no `--privileged`, a mainline kernel without `rknpu`, or no internet on first start |
 | `exec format error` | Wrong architecture: `rknn` is arm64 only. `cpu` and `cuda` are multi-arch |
 | Container `unhealthy` | `docker logs nemotron-diarization`; the model failed to load or the port is taken |
