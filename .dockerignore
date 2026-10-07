@@ -1,9 +1,13 @@
+# build context of the Rockchip image (Dockerfile.rknn); the CPU/CUDA image uses Dockerfile.dockerignore
 .venv
 .env
+.git
+.github
 dist
 tests
 docs
 examples
+samples
 **/__pycache__
 conversion/*.onnx
 conversion/*.npy

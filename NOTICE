@@ -1,0 +1,12 @@
+Nemotron Diarization Server
+Copyright 2026 Anand (github.com/anand34577)
+
+This product's own source code is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product uses the model nvidia/Nemotron-3-Diarization by NVIDIA Corporation
+(https://huggingface.co/nvidia/Nemotron-3-Diarization), licensed under the OpenMDW License Agreement,
+version 1.1 (see licenses/OpenMDW-1.1.txt). The RKNN model files published with this product are
+conversions of that model and are distributed under the same agreement.
+
+The Docker images also contain third-party software under their own licenses, and the Rockchip NPU
+runtime is downloaded from Rockchip under Rockchip's RKNN SDK License. See THIRD_PARTY_NOTICES.md.

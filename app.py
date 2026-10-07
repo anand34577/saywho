@@ -33,7 +33,7 @@ from audio_io import SAMPLE_RATE, AudioDecodeError, ffmpeg_path, load_audio
 from segmentation import analyze, export
 from timing import stage_clock
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
 MAX_SENT_FRAMES = 150_000  # cap on probability frames returned when include_probabilities=true
 LEVELS = {"critical": 50, "error": 40, "warning": 30, "info": 20, "debug": 10}

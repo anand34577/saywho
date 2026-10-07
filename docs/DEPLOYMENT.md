@@ -15,11 +15,11 @@ with "(fallback)" when the preferred hardware was unavailable.
 
 | Where | Easiest | Alternative |
 |---|---|---|
-| Windows PC (GPU or CPU) | `install.bat` then `run.bat` | Docker Desktop + `--profile cpu`/`gpu` |
-| Linux server / VM / cloud (GPU or CPU) | Docker `--profile gpu` or `--profile cpu` | `./install.sh` then `./run.sh` |
+| Windows PC (GPU or CPU) | `install.bat` then `run.bat` | Docker Desktop + the `cpu`/`cuda` image |
+| Linux server / VM / cloud (GPU or CPU) | Docker image `cuda` or `cpu` ([DOCKER.md](DOCKER.md)) | `./install.sh` then `./run.sh` |
 | macOS (Intel / Apple Silicon) | `./install.sh` then `./run.sh` (uses the Apple GPU) | Docker `--profile cpu` (CPU only) |
-| Rockchip RK3566/68/76/88 board | Docker `--profile npu` (section 3) | `./install.sh rknn` |
-| Raspberry Pi 5, Jetson (CPU), Graviton, other arm64 | Docker `--profile cpu` | `./install.sh cpu` |
+| Rockchip RK3566/68/76/88 board | Docker image `rknn` (section 3) | `./install.sh rknn` |
+| Raspberry Pi 5, Jetson (CPU), Graviton, other arm64 | Docker image `cpu` | `./install.sh cpu` |
 
 Requirements: about 1 GB RAM free (more for very long files), 4 GB disk for CPU installs or 10 GB with CUDA,
 Python 3.10-3.13 for native installs, and Docker Compose v2 for Docker installs.
@@ -84,56 +84,27 @@ torch >= 2.7 is required.
 
 ## 2. Docker
 
-One compose file, three profiles. Settings come from `.env` (copy `.env.example`). Images include the model, so
-containers start offline.
+Prebuilt images are published on ghcr.io: `cpu` (amd64 + arm64), `cuda` (amd64 + arm64) and `rknn` (arm64).
+**[DOCKER.md](DOCKER.md) is the complete guide**: `docker run` and compose commands, every environment variable,
+GPU and NPU host setup, licenses and troubleshooting. In short:
 
 ```bash
-cp .env.example .env                              # optional; edit settings
-
-docker compose --profile cpu up -d --build        # any x86_64 / arm64 machine
-docker compose --profile gpu up -d --build        # NVIDIA GPU
-docker compose --profile npu up -d                # Rockchip board
-
-docker compose logs -f                            # watch startup: "... ready on <accelerator>"
-curl http://localhost:7860/api/v1/ready
+docker run -d -p 7860:7860 ghcr.io/anand34577/nemotron-diarization:cpu                  # any machine
+docker run -d -p 7860:7860 --gpus all ghcr.io/anand34577/nemotron-diarization:cuda      # NVIDIA GPU
 ```
 
-To make `docker compose up -d` work without `--profile`, set `COMPOSE_PROFILES=cpu` (or `gpu`/`npu`) in `.env`.
-Stop with `docker compose --profile cpu down`.
-
-| Profile | Image | Dockerfile | Notes |
-|---|---|---|---|
-| `cpu` | `nemotron-diarization:cpu` | `Dockerfile` | multi-arch (amd64 and arm64), ~3.5 GB |
-| `gpu` | `nemotron-diarization:gpu` | `Dockerfile` with the `TORCH_INDEX=cu126` build arg | needs the NVIDIA driver and Container Toolkit; several GB larger (CUDA libraries) |
-| `npu` | `nemotron-diarization:rknn` | `Dockerfile.rknn` | arm64, privileged (NPU device + device tree) |
-
-### GPU host setup (Linux)
-
-Install the NVIDIA driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), then check:
-`docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu22.04 nvidia-smi`. On Windows, Docker Desktop with the
-WSL 2 backend supports `--profile gpu` once the Windows NVIDIA driver is installed.
-
-If the container can't see the GPU, the server still starts on the CPU. `/api/v1/info` → `fallbacks` then says
-`cuda: RuntimeError: CUDA is not available ...`.
-
-### Without compose
-
-```bash
-docker build -t nemotron-diarization:cpu .
-docker run -d --name nemotron-diarization -p 7860:7860 --restart unless-stopped \
-  -e API_KEY=change-me nemotron-diarization:cpu
-
-docker build -t nemotron-diarization:gpu --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu126 .
-docker run -d --name nemotron-diarization --gpus all -p 7860:7860 nemotron-diarization:gpu
-```
+From a clone, `docker compose --profile cpu|cuda|rknn up -d` pulls the matching image. Add `--build` to build it
+locally instead.
 
 ### Moving an image to a machine without internet
 
 ```bash
-docker save nemotron-diarization:cpu | gzip > nemotron-diarization-cpu.tar.gz      # on the build machine
-gunzip -c nemotron-diarization-cpu.tar.gz | docker load                            # on the target
-docker compose --profile cpu up -d                                                 # no --build
+docker pull ghcr.io/anand34577/nemotron-diarization:cpu                                  # on a connected machine
+docker save ghcr.io/anand34577/nemotron-diarization:cpu | gzip > nemotron-diarization-cpu.tar.gz
+gunzip -c nemotron-diarization-cpu.tar.gz | docker load                                  # on the target
 ```
+
+Add `--platform linux/arm64` to `docker pull` when the target is an arm64 machine.
 
 ---
 
@@ -144,36 +115,33 @@ docker compose --profile cpu up -d                                              
 runtime (`librknnrt`). Without a working driver the server still runs, on the board's CPU (much slower), and
 `/api/v1/info` → `fallbacks` says why.
 
-**Download the NPU model.** The converted models (221-253 MB each) are too large for git. They are published as
-assets of the GitHub release `rknn-models-v1`, with checksums in `rknn_models/SHA256SUMS`. On the board:
+**Rockchip runtime license.** The NPU runtime (`librknnrt.so`, `rknn-toolkit-lite2` 2.3.2) is Rockchip software
+under the proprietary [RKNN SDK License](https://github.com/airockchip/rknn-toolkit2/blob/master/LICENSE). This
+project does not ship it. You accept that license and download the runtime directly from Rockchip: in Docker with
+`RKNN_ACCEPT_LICENSE=yes`, natively through the prompt in `./install.sh rknn`.
 
+**Option A: prebuilt Docker image** (simplest; the NPU models are included):
 ```bash
-gh auth login                          # once; the repository is private (or: export GITHUB_TOKEN=<token>)
-python3 scripts/download_models.py     # detects the SoC and fetches its model into rknn_models/, verifies SHA-256
+docker run -d --name nemotron-diarization --privileged -p 7860:7860 --restart unless-stopped \
+  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/nemotron-diarization:rknn
+```
+Compose equivalent: `COMPOSE_PROFILES=rknn` and `RKNN_ACCEPT_LICENSE=yes` in `.env`, then `docker compose up -d`.
+See [DOCKER.md](DOCKER.md#rockchip-npu-rknn).
+
+**Option B: build the image yourself.** The converted models (221-253 MB each) are too large for git. They are
+assets of the GitHub release `rknn-models-v1`, with checksums in `rknn_models/SHA256SUMS`:
+```bash
+gh auth login                                   # once; the repository is private (or: export GITHUB_TOKEN=<token>)
+python3 scripts/download_models.py              # this board's model (or: rk3566 | rk3568 | rk3576 | rk3588 | all)
+docker compose --profile rknn up -d --build
 ```
 
-Pass `rk3566`, `rk3568`, `rk3576`, `rk3588` or `all` to choose explicitly, for example when preparing files on a PC.
-If the model is missing, the server still starts, on the CPU, and `/api/v1/info` → `fallbacks` says
-`... is missing; run: python scripts/download_models.py`.
+**Option C: native, no Docker**: `./install.sh rknn` (Python <= 3.12). It installs the packages, downloads the
+model, and, after you accept Rockchip's license, downloads the runtime (into the venv, and `librknnrt.so` into
+`/usr/lib` with sudo).
 
-**Option A: Docker, built on the board** (simplest):
-```bash
-docker compose --profile npu up -d --build      # the first build downloads PyTorch and the model; allow some time
-```
-
-**Option B: Docker, built on a PC, copied to the board.** Requires Docker Buildx with QEMU emulation, which Docker
-Desktop includes.
-```bash
-python scripts/download_models.py all
-docker buildx build --platform linux/arm64 -f Dockerfile.rknn -t nemotron-diarization:rknn --load .
-docker save nemotron-diarization:rknn | gzip > nemotron-diarization-rknn-arm64.tar.gz
-# copy the .tar.gz and this folder to the board, then on the board:
-gunzip -c nemotron-diarization-rknn-arm64.tar.gz | docker load
-docker compose --profile npu up -d               # no --build: uses the loaded image
-```
-
-**Option C: native, no Docker**: `./install.sh rknn` (Python <= 3.12). It installs the packages, copies
-`librknnrt.so` to `/usr/lib` with sudo, and downloads the model.
+If the model or runtime is missing, the server still starts, on the CPU, and `/api/v1/info` → `fallbacks` says what
+to do.
 
 The header shows for example `RK3576 NPU (2 cores, mask=0_1)`.
 
@@ -207,7 +175,8 @@ To keep the CPU load down:
   for the rest of the system.
 - **Pin to the big cores.** Check the layout first: `lscpu`, or
   `cat /sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_max_freq` (the big cores have the highest frequency). Then add
-  `cpuset: "4-7"` (for example) to the `npu` service in `docker-compose.yml`, or start natively with
+  `cpuset: "4-7"` (for example) to the `rknn` service in `docker-compose.yml` (`--cpuset-cpus 4-7` with
+  `docker run`), or start natively with
   `taskset -c 4-7 ./run.sh`.
 - **Upload WAV or FLAC** when you control the source. MP3/AAC decoding is skipped; only the spectrogram remains.
 
@@ -217,7 +186,10 @@ runs with `-vn`).
 
 ### Verify on the board
 
+The test recordings are not in the image. From a clone, copy them in first:
+
 ```bash
+docker cp samples nemotron-diarization:/app/samples
 # correctness vs the GPU reference (expect identical segments, 3 speakers)
 docker exec nemotron-diarization python conversion/validate.py samples/meeting.wav --backend rknn --reference samples/meeting_ref.npy
 docker exec nemotron-diarization python conversion/validate.py samples/long.wav    --backend rknn --reference samples/long_ref.npy
@@ -336,7 +308,7 @@ On a GPU, a very long file that runs out of GPU memory is retried on the CPU aut
 ```bash
 git pull
 ./install.sh                                   # native (Windows: install.bat); keeps .venv, PyTorch and .env
-docker compose --profile <p> up -d --build     # Docker
+docker compose pull && docker compose up -d   # Docker, prebuilt images (add --profile <p> without COMPOSE_PROFILES)
 ```
 
 `CHANGELOG.md` lists what changed in each version.

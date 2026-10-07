@@ -61,10 +61,23 @@ if [ "$TARGET" = rknn ]; then
   command -v ffmpeg >/dev/null || "$VPY" -m pip install imageio-ffmpeg
   say "Downloading the NPU model for this board"
   "$VPY" scripts/download_models.py || die "NPU model download failed (see above)"
-  if [ ! -e /usr/lib/librknnrt.so ] && [ ! -e /usr/local/lib/librknnrt.so ]; then
-    say "Installing the RKNN runtime library (needs sudo)"
-    sudo install -m 0644 docker/librknnrt.so /usr/lib/librknnrt.so && sudo ldconfig
+
+  # Rockchip's runtime is proprietary (RKNN SDK License); it is downloaded from Rockchip only after acceptance
+  case "$(echo "${RKNN_ACCEPT_LICENSE:-}" | tr 'A-Z' 'a-z')" in yes|true|1) ok=y ;; *) ok= ;; esac
+  if [ -z "$ok" ]; then
+    echo "The Rockchip NPU runtime (librknnrt.so, rknn-toolkit-lite2 2.3.2) is licensed by Rockchip under the RKNN SDK License:"
+    echo "  https://github.com/airockchip/rknn-toolkit2/blob/master/LICENSE"
+    printf "Accept it and download the runtime from Rockchip? [y/N] "
+    read -r ok || ok=
   fi
+  case "$ok" in
+    y|Y|yes)
+      "$VPY" scripts/fetch_rknn_runtime.py --accept-license --python-only || die "rknn-toolkit-lite2 download failed"
+      say "Installing librknnrt.so to /usr/lib (needs sudo)"
+      sudo "$VPY" scripts/fetch_rknn_runtime.py --accept-license --lib-only --lib-dir /usr/lib && sudo ldconfig \
+        || die "librknnrt.so download failed" ;;
+    *) say "Skipped the NPU runtime: the server will run on the CPU. Re-run ./install.sh rknn to add it." ;;
+  esac
 else
   "$VPY" -m pip install -r requirements.txt
 fi

@@ -158,7 +158,13 @@ def rknn_model_path(platform: str) -> str:
 
 
 def make_rknn_runner(platform: str):
-    from rknnlite.api import RKNNLite
+    try:
+        from rknnlite.api import RKNNLite
+    except (ImportError, OSError) as e:
+        raise RuntimeError(
+            f"Rockchip NPU runtime not installed ({e}). Docker: set RKNN_ACCEPT_LICENSE=yes; "
+            "native: ./install.sh rknn"
+        ) from e
 
     path = rknn_model_path(platform)
     if not os.path.exists(path):

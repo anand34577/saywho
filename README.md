@@ -15,41 +15,41 @@ It runs on whatever hardware is available and picks the fastest option automatic
 If the preferred hardware fails at startup (no driver, wrong kernel, broken CUDA), the server logs why and **falls
 back to the CPU** instead of failing. CPU output matches the GPU reference exactly.
 
-## Quick start
+## Quick start with Docker (prebuilt images)
+
+```bash
+# any machine (x86_64 or arm64)
+docker run -d --name nemotron-diarization -p 7860:7860 ghcr.io/anand34577/nemotron-diarization:cpu
+
+# NVIDIA GPU (needs the NVIDIA Container Toolkit)
+docker run -d --name nemotron-diarization -p 7860:7860 --gpus all ghcr.io/anand34577/nemotron-diarization:cuda
+
+# Rockchip RK3566/68/76/88 board; RKNN_ACCEPT_LICENSE=yes accepts Rockchip's runtime license (see docs/DOCKER.md)
+docker run -d --name nemotron-diarization -p 7860:7860 --privileged \
+  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/nemotron-diarization:rknn
+```
+
+Then open **http://localhost:7860** for the UI, or **http://localhost:7860/docs** for the interactive API docs.
+**[docs/DOCKER.md](docs/DOCKER.md)** covers compose, every environment variable, GPU and NPU host setup, and
+troubleshooting.
+
+## Quick start without Docker
 
 ```bash
 git clone https://github.com/anand34577/nemotron-diarization.git
 cd nemotron-diarization
 ```
 
-**Windows** (Python 3.10-3.13 from python.org)
-```bat
-install.bat
-run.bat
-```
+| OS | Install | Start |
+|---|---|---|
+| Windows (Python 3.10-3.13 from python.org) | `install.bat` | `run.bat` |
+| Linux / macOS | `./install.sh` | `./run.sh` |
+| Rockchip board | `./install.sh rknn` | `./run.sh` |
 
-**Linux / macOS**
-```bash
-./install.sh
-./run.sh
-```
-
-**Docker** (any OS)
-```bash
-docker compose --profile cpu up -d --build      # or: --profile gpu (NVIDIA GPU)
-```
-
-**Rockchip board** (NPU): the converted models are release assets, not in git. Download the one for your board
-first:
-```bash
-python3 scripts/download_models.py              # needs `gh auth login` or GITHUB_TOKEN (private repo)
-docker compose --profile npu up -d --build      # or natively: ./install.sh rknn (downloads it for you)
-```
-
-Then open **http://127.0.0.1:7860** for the UI, or **http://127.0.0.1:7860/docs** for the interactive API docs.
-
-The installers detect your hardware, install the matching PyTorch build, download the model and run a self-check. All
-configuration lives in `.env` (see `.env.example`); nothing needs to be set for a local run.
+The installers detect your hardware, install the matching PyTorch build, download the model and run a self-check.
+On a Rockchip board, `./install.sh rknn` also downloads the NPU model and, once you accept Rockchip's license, the NPU
+runtime. All configuration lives in `.env` (see `.env.example`); nothing needs to be set for a local run. Details:
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## API
 
@@ -82,6 +82,8 @@ Parameters: `threshold`, `min_segment`, `merge_gap`, `include_probabilities`, `f
 
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: every install method (Windows, Linux, macOS, Docker CPU/GPU/NPU,
   Rockchip boards), configuration, systemd, nginx/HTTPS, health checks, offline installs, troubleshooting
+- **[docs/DOCKER.md](docs/DOCKER.md)**: prebuilt images (`cpu`, `cuda`, `rknn`), `docker run` and compose, every
+  environment variable, licenses inside the images
 - **[docs/API.md](docs/API.md)**: endpoints, parameters, response fields, errors, curl/Python/JavaScript examples
 - **[.env.example](.env.example)**: every setting with its default
 
@@ -110,19 +112,38 @@ Parameters: `threshold`, `min_segment`, `merge_gap`, `include_probabilities`, `f
 | `settings.py`, `.env.example` | configuration |
 | `static/index.html` | web UI |
 | `install.sh`, `install.ps1`/`install.bat`, `run.sh`, `run.bat` | native install and start |
-| `Dockerfile` (CPU/GPU), `Dockerfile.rknn` (NPU), `docker-compose.yml` | containers |
+| `Dockerfile` (CPU/CUDA), `Dockerfile.rknn` (NPU), `docker-compose.yml`, `.github/workflows/docker.yml` | images and their release build |
 | `rknn_models/SHA256SUMS`, `scripts/download_models.py` | converted NPU models (release assets) and their downloader |
-| `docker/librknnrt.so`, `requirements-rknn.txt` | Rockchip runtime (2.3.2) |
+| `scripts/fetch_rknn_runtime.py`, `docker/rknn-entrypoint.sh`, `requirements-rknn.txt` | Rockchip runtime 2.3.2, downloaded from Rockchip after license acceptance |
+| `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, `licenses/` | licenses and notices |
 | `conversion/` | ONNX export, RKNN conversion, end-to-end validation against the reference |
 | `bench.py`, `scripts/check_npu.sh` | NPU benchmark and driver check |
 | `tests/` | API and segmentation tests (`python -m unittest discover -s tests`) |
 | `samples/` | test recordings + GPU reference probabilities |
 
-## License
+## License and terms of use
 
-No license file has been added yet. The model weights (`nvidia/Nemotron-3-Diarization`, and the RKNN models converted
-from them) are covered by the license on the
-[Hugging Face model card](https://huggingface.co/nvidia/Nemotron-3-Diarization).
+- **This project's code:** [Apache License 2.0](LICENSE). Copyright 2026 Anand. See [NOTICE](NOTICE).
+- **The model** `nvidia/Nemotron-3-Diarization` (NVIDIA), and the RKNN models converted from it:
+  [OpenMDW License 1.1](licenses/OpenMDW-1.1.txt). Commercial and non-commercial use are allowed; if you
+  redistribute the model, include that license.
+- **Rockchip NPU runtime:** Rockchip's proprietary
+  [RKNN SDK License](https://github.com/airockchip/rknn-toolkit2/blob/master/LICENSE). It is not distributed here;
+  you download it from Rockchip after accepting that license.
+- **Docker images:** they also contain Debian, FFmpeg, PyTorch, Python packages and, in the `cuda` image, NVIDIA
+  CUDA libraries, each under its own license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `/licenses`
+  inside each image.
+
+**Responsible use.** Speaker diarization processes recordings of people's voices, which is personal data in many
+jurisdictions (for example under the GDPR). Only process recordings you are allowed to process: get consent where
+the law requires it, and follow the recording and data-protection laws that apply to you. The model labels
+speakers by order of appearance ("Speaker 1", "Speaker 2"); it does not identify who a person is, and should not be
+used to try. Results can contain errors (for example with recordings of more than eight speakers, the model's
+maximum, noisy audio or very short turns), so review them before relying on them for decisions about people. The software and the model are
+provided "as is", without warranty of any kind (Apache-2.0 sections 7-8; OpenMDW-1.1).
+
+NVIDIA, Nemotron and CUDA are trademarks of NVIDIA Corporation; Rockchip and RKNN are trademarks of Rockchip
+Electronics Co., Ltd. This project is independent and not endorsed by either company.
 
 ## Re-converting the RKNN models
 
