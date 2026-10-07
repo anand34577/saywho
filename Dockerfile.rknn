@@ -1,0 +1,44 @@
+# Nemotron-3-Diarization server for Rockchip NPUs (RK3566 / RK3568 / RK3576 / RK3588), arm64.
+# Build on the board:  docker compose --profile npu build    (or: docker build -f Dockerfile.rknn -t nemotron-diarization:rknn .)
+# Falls back to the board's CPU if the NPU driver is unavailable.
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/opt/hf \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    HOST=0.0.0.0 \
+    PORT=7860 \
+    DIAR_BACKEND=auto \
+    NPU_CORE_MASK=all
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# CPU-only PyTorch: on the board it only runs the light pre/post-processing and the speaker cache.
+# >= 2.7 is required: with CPU-only torch 2.6, transformers 5.19 fails on import (torch.accelerator raises)
+RUN pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+COPY requirements-rknn.txt /tmp/requirements-rknn.txt
+RUN pip install -r /tmp/requirements-rknn.txt
+
+# RKNN runtime, same version (2.3.2) as the toolkit that built the .rknn models
+COPY docker/librknnrt.so /usr/lib/librknnrt.so
+RUN ldconfig
+
+# config, processor and weights of the CPU-side parts (feature stacking, speaker cache), baked into the image
+RUN python -c "from huggingface_hub import snapshot_download; \
+snapshot_download('nvidia/Nemotron-3-Diarization', allow_patterns=['*.json', 'model.safetensors'])"
+ENV HF_HUB_OFFLINE=1
+
+WORKDIR /app
+COPY app.py diar_engine.py settings.py segmentation.py audio_io.py timing.py bench.py ./
+COPY static ./static
+COPY conversion/validate.py ./conversion/validate.py
+COPY rknn_models ./rknn_models
+COPY samples ./samples
+
+EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/api/v1/ready')"
+CMD ["python", "app.py"]

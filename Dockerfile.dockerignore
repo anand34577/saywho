@@ -1,0 +1,11 @@
+# build context of the CPU/GPU image (Dockerfile); the Rockchip image uses .dockerignore
+*
+!app.py
+!diar_engine.py
+!settings.py
+!segmentation.py
+!audio_io.py
+!timing.py
+!requirements.txt
+!static
+!samples/meeting.wav

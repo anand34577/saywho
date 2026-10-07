@@ -1,0 +1,16 @@
+# PyTorch is NOT listed here on purpose: the right build depends on the hardware, and a plain `pip install torch`
+# can replace a working CUDA build with a CPU-only one. install.sh / install.ps1 install it first:
+#   NVIDIA GPU:          pip install torch --index-url https://download.pytorch.org/whl/cu126
+#   CPU (Linux/Windows): pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   macOS:               pip install torch
+# torch >= 2.7 is required on machines without a GPU (transformers 5.19 fails to import with older CPU builds).
+transformers>=5.19
+huggingface_hub
+librosa
+soundfile
+numpy
+fastapi
+uvicorn
+python-multipart
+# static ffmpeg binary (Windows / macOS / Linux, x86_64 + arm64); a system ffmpeg on PATH is used first if present
+imageio-ffmpeg

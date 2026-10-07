@@ -1,0 +1,12 @@
+.venv
+.env
+dist
+tests
+docs
+examples
+**/__pycache__
+conversion/*.onnx
+conversion/*.npy
+*.cmd
+*.bat
+*.ps1

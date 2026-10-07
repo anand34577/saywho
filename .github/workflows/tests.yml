@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    # API and segmentation tests with a fake model: no PyTorch, GPU or model download needed
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install fastapi uvicorn python-multipart numpy soundfile httpx imageio-ffmpeg
+      - run: python -m unittest discover -s tests -v
+
+  lint-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n install.sh && bash -n run.sh && bash -n scripts/check_npu.sh
+      - run: docker compose --profile cpu --profile gpu --profile npu config --quiet

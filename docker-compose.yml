@@ -1,0 +1,74 @@
+# Pick the hardware with a profile:
+#
+#   docker compose --profile cpu up -d --build    any x86_64 / arm64 machine
+#   docker compose --profile gpu up -d --build    NVIDIA GPU (needs the NVIDIA Container Toolkit)
+#   docker compose --profile npu up -d            Rockchip RK3566/68/76/88 board (prebuilt image, or add --build)
+#
+# Or put COMPOSE_PROFILES=cpu|gpu|npu in .env and just run `docker compose up -d`.
+# Settings come from .env (see .env.example); the UI/API is on http://<host>:${PORT:-7860}.
+
+x-env: &env
+  HOST: 0.0.0.0
+  PORT: "7860"
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  API_KEY: ${API_KEY:-}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
+  ENABLE_UI: ${ENABLE_UI:-true}
+  DIAR_BACKEND: ${DIAR_BACKEND:-auto}
+  DIAR_FALLBACK: ${DIAR_FALLBACK:-true}
+  CPU_THREADS: ${CPU_THREADS:-0}
+  CUDA_DEVICE: ${CUDA_DEVICE:-0}
+  NPU_CORE_MASK: ${NPU_CORE_MASK:-all}
+  RK_PLATFORM: ${RK_PLATFORM:-}
+  MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-2048}
+  MAX_AUDIO_MINUTES: ${MAX_AUDIO_MINUTES:-0}
+  MAX_QUEUED_JOBS: ${MAX_QUEUED_JOBS:-100}
+  JOB_TTL_MINUTES: ${JOB_TTL_MINUTES:-60}
+  DEFAULT_THRESHOLD: ${DEFAULT_THRESHOLD:-0.5}
+  DEFAULT_MIN_SEGMENT: ${DEFAULT_MIN_SEGMENT:-0.1}
+  DEFAULT_MERGE_GAP: ${DEFAULT_MERGE_GAP:-0.3}
+
+services:
+  cpu:
+    profiles: [cpu]
+    build: .
+    image: nemotron-diarization:cpu
+    container_name: nemotron-diarization
+    ports:
+      - "${PORT:-7860}:7860"
+    environment: *env
+    restart: unless-stopped
+
+  gpu:
+    profiles: [gpu]
+    build:
+      context: .
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cu126
+    image: nemotron-diarization:gpu
+    container_name: nemotron-diarization
+    ports:
+      - "${PORT:-7860}:7860"
+    environment: *env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  npu:
+    profiles: [npu]
+    build:
+      context: .
+      dockerfile: Dockerfile.rknn
+    image: nemotron-diarization:rknn
+    container_name: nemotron-diarization
+    # NPU access: /dev/dri (rknpu DRM node) and the device tree (SoC detection)
+    privileged: true
+    ports:
+      - "${PORT:-7860}:7860"
+    environment: *env
+    restart: unless-stopped

@@ -1,0 +1,10 @@
+transformers==5.19.0
+huggingface_hub
+# rknn-toolkit(-lite)2 2.3.2 needs numpy <= 1.26.4, and librosa 1.x needs numpy >= 2.1
+numpy==1.26.4
+librosa==0.11.0
+soundfile
+fastapi
+uvicorn
+python-multipart
+rknn-toolkit-lite2==2.3.2

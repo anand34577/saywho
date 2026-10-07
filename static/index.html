@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nemotron Diarization Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1014; --panel:#151a20; --panel2:#1b2129; --line:#262e38; --text:#e6ebf0; --muted:#8a96a3;
+  --accent:#76b900; --accent-ink:#0d1014; --danger:#ff6b6b;
+  --s0:#76b900; --s1:#4cc3ff; --s2:#ff9f43; --s3:#d67bff; --s4:#ff5d8f; --s5:#ffd43b; --s6:#2ee6b6; --s7:#a0a8ff;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+header{display:flex;align-items:center;gap:12px;padding:18px 28px;border-bottom:1px solid var(--line)}
+header .logo{width:28px;height:28px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-weight:700}
+header h1{font-size:16px;margin:0;font-weight:600}
+header .sub{color:var(--muted);font-size:13px}
+header .dev{margin-left:auto;font-size:12px;color:var(--muted)}
+main{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 14px;font-weight:600}
+
+/* upload */
+#drop{border:1.5px dashed #34404d;border-radius:var(--radius);padding:44px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--panel)}
+#drop:hover,#drop.over{border-color:var(--accent);background:#161d14}
+#drop .big{font-size:17px;font-weight:600;margin-bottom:6px}
+#drop .hint{color:var(--muted)}
+.controls{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
+.controls label{display:flex;align-items:center;gap:8px}
+select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit}
+button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font:600 13px Inter,sans-serif;cursor:pointer}
+button.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:default}
+
+#status{margin-top:16px;display:none}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;width:30%;background:var(--accent);animation:slide 1.2s infinite ease-in-out}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+.err{color:var(--danger)}
+
+#results{display:none;margin-top:24px}
+.grid{display:grid;gap:16px}
+.top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media (max-width:900px){.top{grid-template-columns:1fr}}
+
+/* media */
+.media video,.media audio{width:100%;border-radius:8px;background:#000;max-height:360px}
+.now{margin-top:12px;display:flex;align-items:center;gap:10px;min-height:32px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpi{background:var(--panel2);border-radius:10px;padding:12px}
+.kpi .v{font-size:20px;font-weight:600}
+.kpi .l{font-size:12px;color:var(--muted)}
+
+/* timeline */
+.tl-wrap{position:relative}
+#timeline{width:100%;display:block;cursor:pointer}
+.tl-legend{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:4px}
+
+/* speakers */
+.speakers{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.spk{background:var(--panel2);border-radius:10px;padding:14px;border-left:4px solid}
+.spk .name{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.spk .name input{background:transparent;border:0;border-bottom:1px dashed transparent;color:var(--text);font:600 15px Inter,sans-serif;width:100%;padding:2px 0}
+.spk .name input:hover,.spk .name input:focus{border-bottom-color:var(--muted);outline:none}
+.spk .share{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 10px}
+.spk .share div{height:100%}
+.spk dl{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin:0;font-size:12.5px}
+.spk dt{color:var(--muted)}
+.spk dd{margin:0;text-align:right}
+
+/* table */
+.tablewrap{max-height:420px;overflow:auto;border-radius:8px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:500}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.active{background:#1d2a14}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.two{grid-template-columns:1fr 1fr}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+canvas.chart{width:100%;display:block}
+.note{color:var(--muted);font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">N</div>
+  <div>
+    <h1>Nemotron Diarization Studio</h1>
+    <div class="sub">Who spoke when · nvidia/Nemotron-3-Diarization</div>
+  </div>
+  <div class="dev mono" id="devinfo">…</div>
+  <a class="dev" href="/docs" target="_blank" style="margin-left:14px;color:var(--muted)">API docs ↗</a>
+</header>
+
+<main>
+  <div id="drop">
+    <div class="big">Drop a video or audio file here</div>
+    <div class="hint">or click to browse · mp4, mkv, mov, webm, wav, mp3, m4a, flac, ogg …</div>
+    <input type="file" id="file" accept="audio/*,video/*" hidden>
+  </div>
+  <div class="controls">
+    <label>Speech threshold
+      <input type="number" id="thr" min="0.05" max="0.95" step="0.05" value="0.5" style="width:70px">
+    </label>
+    <label>Min segment (s)
+      <input type="number" id="minseg" min="0" max="5" step="0.05" value="0.1" style="width:70px">
+    </label>
+    <label>Merge gaps under (s)
+      <input type="number" id="mergegap" min="0" max="5" step="0.05" value="0.3" style="width:70px">
+    </label>
+    <span class="note" style="margin:0">Changing these re-segments instantly, with no re-inference.</span>
+  </div>
+
+  <div id="status" class="panel">
+    <div id="statustext">Uploading…</div>
+    <div class="bar"><div></div></div>
+  </div>
+
+  <section id="results">
+    <div class="grid top">
+      <div class="panel media">
+        <h2 id="fname">Media</h2>
+        <div id="player"></div>
+        <div class="now" id="now"><span class="note" style="margin:0">Press play to see the active speaker live</span></div>
+      </div>
+      <div class="panel">
+        <h2>Summary</h2>
+        <div class="kpis" id="kpis"></div>
+        <div class="note mono" id="timings"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Speaker timeline <span style="text-transform:none;letter-spacing:0;font-weight:400">· click to seek · scroll to zoom</span></h2>
+      <div class="tl-wrap"><canvas id="timeline"></canvas></div>
+      <div class="tl-legend mono"><span id="tlstart">0:00</span><span id="tlend"></span></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Speaker activity probability (raw model output)</h2>
+      <canvas id="probs" class="chart"></canvas>
+      <div class="note">Per-frame sigmoid activity for each of the model's speaker channels. Channels are ordered by when each speaker first appears.</div>
+    </div>
+
+    <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 12px">Speakers</h2>
+    <div class="grid speakers" id="speakers"></div>
+
+    <div class="grid two" style="margin-top:16px">
+      <div class="panel">
+        <h2>Talk-time share</h2>
+        <canvas id="share" class="chart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Who follows whom (turn transitions)</h2>
+        <div id="matrix"></div>
+        <div class="note">Rows = speaker who stopped, columns = next speaker.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="margin:0">Segments (<span id="segcount">0</span>)</h2>
+        <div class="row-actions">
+          <button class="ghost" data-dl="rttm">RTTM</button>
+          <button class="ghost" data-dl="csv">CSV</button>
+          <button class="ghost" data-dl="srt">SRT</button>
+          <button class="ghost" data-dl="json">JSON</button>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>#</th><th>Speaker</th><th>Start</th><th>End</th><th>Duration</th><th>Overlaps</th></tr></thead>
+          <tbody id="segbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const COLORS = Array.from({length:8},(_,i)=>getComputedStyle(document.documentElement).getPropertyValue('--s'+i).trim());
+let R = null;          // raw server result
+let D = null;          // derived (segments + stats) for current thresholds
+let media = null, mediaURL = null, view = {start:0,end:1};
+let names = {};
+
+// ---------- API key (only when the server sets API_KEY) ----------
+const KEY='diarApiKey';
+const getKey = () => { try{ return localStorage.getItem(KEY)||'' }catch{ return '' } };
+const askKey = () => { const k=prompt('This server requires an API key:', getKey()); if(k!==null){ try{localStorage.setItem(KEY,k.trim())}catch{} } return k!==null; };
+
+function loadInfo(){
+  fetch('/api/v1/info').then(r=>r.json()).then(i=>{
+    const d=$('#devinfo');
+    if (i.status==='loading'){ d.textContent='Loading model…'; setTimeout(loadInfo,3000); return; }
+    if (i.status==='error'){ d.innerHTML='<span class="err">Model failed to load</span>'; d.title=i.error||''; return; }
+    d.textContent = i.accelerator + (i.fallbacks && i.fallbacks.length ? ' (fallback)' : '');
+    d.title = `backend: ${i.backend}` + (i.fallbacks && i.fallbacks.length ? '\n' + i.fallbacks.join('\n') : '');
+    if (i.auth_required && !getKey()) askKey();
+  }).catch(()=>{ $('#devinfo').textContent='server unreachable'; setTimeout(loadInfo,5000); });
+}
+loadInfo();
+
+// ---------- upload ----------
+const drop = $('#drop'), fileIn = $('#file');
+drop.onclick = () => fileIn.click();
+drop.ondragover = e => {e.preventDefault(); drop.classList.add('over')};
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => {e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) run(e.dataTransfer.files[0])};
+fileIn.onchange = () => fileIn.files[0] && run(fileIn.files[0]);
+
+function run(file){
+  $('#results').style.display='none';
+  $('#status').style.display='block';
+  $('#statustext').textContent = `Uploading ${file.name} (${(file.size/1e6).toFixed(1)} MB)…`;
+  const fd = new FormData(); fd.append('file', file); fd.append('include_probabilities', 'true');
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST','/api/v1/diarize');
+  if (getKey()) xhr.setRequestHeader('X-API-Key', getKey());
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const p = Math.round(e.loaded/e.total*100);
+      $('#statustext').textContent = p<100 ? `Uploading… ${p}%` : 'Extracting audio and running Nemotron-3-Diarization…';
+    }
+  };
+  xhr.onload = () => {
+    let res; try{res = JSON.parse(xhr.responseText)}catch{res={error:xhr.responseText}}
+    if (xhr.status===401 && askKey()) return run(file);
+    if (xhr.status!==200 || res.error){
+      const msg = res.error||res.detail||xhr.statusText;
+      $('#statustext').innerHTML = `<span class="err">Error: ${esc(typeof msg==='string'?msg:JSON.stringify(msg))}</span>`;
+      $('#status .bar').style.display='none'; return;
+    }
+    $('#status').style.display='none';
+    R = res; names = {};
+    setupPlayer(file);
+    recompute();
+    $('#results').style.display='block';
+  };
+  xhr.onerror = () => $('#statustext').innerHTML = '<span class="err">Network error</span>';
+  $('#status .bar').style.display='block';
+  xhr.send(fd);
+}
+
+function setupPlayer(file){
+  if (mediaURL) URL.revokeObjectURL(mediaURL);
+  mediaURL = URL.createObjectURL(file);
+  const isVideo = file.type.startsWith('video') || /\.(mp4|mkv|mov|webm|avi|m4v)$/i.test(file.name);
+  $('#player').innerHTML = isVideo ? `<video controls src="${mediaURL}"></video>` : `<audio controls src="${mediaURL}"></audio>`;
+  media = $('#player').firstElementChild;
+  media.ontimeupdate = tick;
+  media.onseeked = tick;
+  $('#fname').textContent = file.name;
+  view = {start:0,end:R.duration};
+}
+
+['#thr','#minseg','#mergegap'].forEach(s=>$(s).addEventListener('change',()=>R&&recompute()));
+
+// ---------- segmentation from probabilities (client-side, so thresholds are live) ----------
+function segmentize(){
+  const thr = +$('#thr').value, minseg = +$('#minseg').value, gap = +$('#mergegap').value;
+  const {frame_sec, probs} = R.activity;
+  const C = probs[0]?.length || 0;
+  let segs = [];
+  for (let c=0;c<C;c++){
+    let on=null, list=[];
+    for (let t=0;t<=probs.length;t++){
+      const a = t<probs.length && probs[t][c]>=thr;
+      if (a && on===null) on=t;
+      if (!a && on!==null){ list.push([on*frame_sec, Math.min(t*frame_sec,R.duration)]); on=null; }
+    }
+    // merge small gaps
+    const merged=[];
+    for (const s of list){
+      const last = merged[merged.length-1];
+      if (last && s[0]-last[1] < gap) last[1]=s[1]; else merged.push([...s]);
+    }
+    merged.filter(s=>s[1]-s[0]>=minseg).forEach(s=>segs.push({start:s[0],end:s[1],ch:c}));
+  }
+  segs.sort((a,b)=>a.start-b.start || a.end-b.end);
+  // relabel by arrival order among speakers actually detected
+  const order=[]; segs.forEach(s=>{ if(!order.includes(s.ch)) order.push(s.ch) });
+  segs.forEach(s=>s.spk=order.indexOf(s.ch));
+  return {segs, order};
+}
+
+function recompute(){
+  const {segs, order} = segmentize();
+  const N = order.length, dur = R.duration;
+  const spk = order.map((ch,i)=>({i, ch, total:0, turns:0, longest:0, first:null, last:0, overlap:0, segs:[]}));
+  segs.forEach(s=>{ const p=spk[s.spk]; const d=s.end-s.start; p.total+=d; p.turns++; p.longest=Math.max(p.longest,d); if(p.first===null)p.first=s.start; p.last=Math.max(p.last,s.end); p.segs.push(s); });
+
+  // sweep line: speech / overlap / silence; per-speaker overlapped time
+  const ev=[]; segs.forEach(s=>{ev.push([s.start,1,s.spk]);ev.push([s.end,-1,s.spk])});
+  ev.sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
+  let active=new Set(), prev=0, speech=0, overlap=0, maxConc=0;
+  for (const [t,k,sp] of ev){
+    const dt=t-prev;
+    if (active.size>=1) speech+=dt;
+    if (active.size>=2){ overlap+=dt; active.forEach(a=>spk[a].overlap+=dt); }
+    if (k===1) active.add(sp); else active.delete(sp);
+    maxConc=Math.max(maxConc,active.size); prev=t;
+  }
+  // overlaps per segment
+  segs.forEach(s=>{ s.with = segs.filter(o=>o!==s && o.spk!==s.spk && o.start<s.end && o.end>s.start).map(o=>o.spk); s.with=[...new Set(s.with)]; });
+
+  // turn sequence: collapse consecutive same speaker by start order
+  const turns=[]; segs.forEach(s=>{ if(!turns.length || turns[turns.length-1].spk!==s.spk) turns.push({spk:s.spk,start:s.start,end:s.end}); else turns[turns.length-1].end=Math.max(turns[turns.length-1].end,s.end); });
+  const trans = Array.from({length:N},()=>Array(N).fill(0));
+  let interruptions=0, gaps=[];
+  for (let k=1;k<turns.length;k++){
+    trans[turns[k-1].spk][turns[k].spk]++;
+    const g = turns[k].start - turns[k-1].end;
+    if (g<0) interruptions++; else gaps.push(g);
+  }
+  spk.forEach(p=>{ p.interrupts = 0; });
+  for (let k=1;k<turns.length;k++) if (turns[k].start<turns[k-1].end) spk[turns[k].spk].interrupts++;
+
+  D = {segs, spk, N, speech, overlap, silence:Math.max(0,dur-speech), maxConc, turns, trans, interruptions,
+       avgGap: gaps.length? gaps.reduce((a,b)=>a+b,0)/gaps.length : 0};
+  renderAll();
+}
+
+// ---------- rendering ----------
+const fmt = s => { s=Math.max(0,s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=(s%60); return (h?h+':'+String(m).padStart(2,'0'):m)+':'+x.toFixed(1).padStart(4,'0'); };
+const fmtShort = s => { s=Math.max(0,s); const m=Math.floor(s/60), x=Math.floor(s%60); return m+':'+String(x).padStart(2,'0'); };
+const pct = (a,b) => b? (100*a/b).toFixed(1)+'%' : '–';
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const name = i => names[i] ?? `Speaker ${i+1}`;
+const color = i => COLORS[i%8];
+
+function renderAll(){ renderKPIs(); renderSpeakers(); renderTable(); renderMatrix(); drawTimeline(); drawProbs(); drawShare(); tick(); }
+
+function renderKPIs(){
+  const dur=R.duration;
+  const k = [
+    ['Speakers detected', D.N],
+    ['Duration', fmtShort(dur)],
+    ['Speech', pct(D.speech,dur)],
+    ['Silence / non-speech', fmtShort(D.silence)],
+    ['Overlapped speech', `${fmtShort(D.overlap)} <span style="font-size:12px;color:var(--muted)">(${pct(D.overlap,D.speech)})</span>`],
+    ['Speaker turns', D.turns.length],
+    ['Interruptions', D.interruptions],
+    ['Avg gap between turns', D.avgGap.toFixed(2)+'s'],
+    ['Max simultaneous', D.maxConc],
+    ['Turns / minute', (D.turns.length/(dur/60)).toFixed(1)],
+    ['Processing time', R.processing_time.toFixed(1)+'s'],
+    ['Real-time factor', `${(dur/Math.max(R.inference_time,1e-6)).toFixed(0)}× <span style="font-size:12px;color:var(--muted)">faster</span>`],
+  ];
+  $('#kpis').innerHTML = k.map(([l,v])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  // per-stage breakdown: wall time and average busy CPU cores
+  const T = R.timings;
+  if (T){
+    const st = (n,label) => T[n] ? `${label} ${T[n].wall.toFixed(2)}s${T[n].cores!=null?` (${T[n].cores} cores)`:''}` : '';
+    let inf = st('inference', 'inference');
+    if (T.accelerator) inf += ` [accelerator ${T.accelerator.wall.toFixed(2)}s × ${T.accelerator.calls}, CPU-side ${T.cpu_side.wall.toFixed(2)}s]`;
+    $('#timings').textContent = [st('decode','decode'), st('features','features'), inf, st('segmentation','segmentation')].filter(Boolean).join(' · ');
+    $('#timings').title = 'Wall time per stage; "cores" = average CPU cores busy during the stage';
+  }
+}
+
+function renderSpeakers(){
+  const dur=R.duration;
+  $('#speakers').innerHTML = D.spk.map(p=>`
+    <div class="spk" style="border-left-color:${color(p.i)}">
+      <div class="name"><span class="dot" style="background:${color(p.i)}"></span><input data-spk="${p.i}" value="${esc(name(p.i))}"></div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${fmtShort(p.total)} talk time</span><b>${pct(p.total,D.speech)}</b></div>
+      <div class="share"><div style="width:${D.speech?100*p.total/D.speech:0}%;background:${color(p.i)}"></div></div>
+      <dl>
+        <dt>Share of total duration</dt><dd>${pct(p.total,dur)}</dd>
+        <dt>Segments</dt><dd>${p.turns}</dd>
+        <dt>Average segment</dt><dd>${(p.total/p.turns).toFixed(1)}s</dd>
+        <dt>Longest segment</dt><dd>${p.longest.toFixed(1)}s</dd>
+        <dt>First heard</dt><dd class="mono">${fmt(p.first)}</dd>
+        <dt>Last heard</dt><dd class="mono">${fmt(p.last)}</dd>
+        <dt>Time overlapping others</dt><dd>${p.overlap.toFixed(1)}s</dd>
+        <dt>Interruptions made</dt><dd>${p.interrupts}</dd>
+      </dl>
+    </div>`).join('');
+  document.querySelectorAll('[data-spk]').forEach(inp=>inp.onchange=()=>{ names[+inp.dataset.spk]=inp.value||undefined; renderTable(); renderMatrix(); drawTimeline(); drawShare(); tick(); });
+}
+
+function renderTable(){
+  $('#segcount').textContent = D.segs.length;
+  $('#segbody').innerHTML = D.segs.map((s,k)=>`<tr data-k="${k}">
+    <td class="mono">${k+1}</td>
+    <td><span class="chip"><span class="dot" style="background:${color(s.spk)}"></span>${esc(name(s.spk))}</span></td>
+    <td class="mono">${fmt(s.start)}</td><td class="mono">${fmt(s.end)}</td><td class="mono">${(s.end-s.start).toFixed(2)}s</td>
+    <td>${s.with.map(w=>`<span class="dot" title="${esc(name(w))}" style="display:inline-block;background:${color(w)};margin-right:3px"></span>`).join('')||'<span style="color:var(--muted)">–</span>'}</td></tr>`).join('');
+  $('#segbody').onclick = e => { const tr=e.target.closest('tr'); if(tr) seek(D.segs[+tr.dataset.k].start); };
+}
+
+function renderMatrix(){
+  if (D.N<2){ $('#matrix').innerHTML='<div class="note">Only one speaker detected.</div>'; return; }
+  const max = Math.max(1,...D.trans.flat());
+  let h='<div class="tablewrap" style="max-height:none"><table><thead><tr><th></th>'+D.spk.map(p=>`<th><span class="dot" style="display:inline-block;background:${color(p.i)}"></span> ${esc(name(p.i))}</th>`).join('')+'</tr></thead><tbody>';
+  D.trans.forEach((row,a)=>{ h+=`<tr style="cursor:default"><th style="position:static"><span class="dot" style="display:inline-block;background:${color(a)}"></span> ${esc(name(a))}</th>`+row.map((v,b)=>`<td class="mono" style="background:rgba(118,185,0,${a===b?0:(v/max*0.55).toFixed(2)})">${a===b?'·':v}</td>`).join('')+'</tr>'; });
+  $('#matrix').innerHTML = h+'</tbody></table></div>';
+}
+
+function setupCanvas(cv, h){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth;
+  cv.style.height=h+'px'; cv.width=w*dpr; cv.height=h*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w,h};
+}
+
+const LANE=28, LABELW=110;
+function drawTimeline(){
+  const cv=$('#timeline'); const H = Math.max(1,D.N)*LANE + 26;
+  const {ctx,w,h}=setupCanvas(cv,H);
+  const span=view.end-view.start, X=t=>LABELW+(t-view.start)/span*(w-LABELW);
+  ctx.font='12px Inter'; ctx.textBaseline='middle';
+  // grid
+  const step = niceStep(span/8);
+  ctx.strokeStyle='#222a33'; ctx.fillStyle='#6c7783';
+  for (let t=Math.ceil(view.start/step)*step; t<=view.end; t+=step){ const x=X(t); ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H-18); ctx.stroke(); ctx.fillText(fmtShort(t), x+3, H-8); }
+  D.spk.forEach(p=>{
+    const y=p.i*LANE;
+    ctx.fillStyle='#1b2129'; ctx.fillRect(LABELW,y+4,w-LABELW,LANE-8);
+    ctx.fillStyle=color(p.i); ctx.fillText(name(p.i).slice(0,14), 4, y+LANE/2);
+    p.segs.forEach(s=>{ if(s.end<view.start||s.start>view.end) return; const x0=Math.max(LABELW,X(s.start)), x1=Math.min(w,X(s.end)); ctx.fillRect(x0,y+4,Math.max(1.5,x1-x0),LANE-8); });
+  });
+  // playhead
+  if (media){ const x=X(media.currentTime); if(x>=LABELW){ ctx.fillStyle='#fff'; ctx.fillRect(x-1,0,2,H-18); } }
+  $('#tlstart').textContent=fmtShort(view.start); $('#tlend').textContent=fmtShort(view.end);
+}
+function niceStep(x){ const c=[1,2,5,10,15,30,60,120,300,600,900,1800,3600]; return c.find(v=>v>=x)||3600; }
+
+$('#timeline').addEventListener('click',e=>{
+  const r=e.target.getBoundingClientRect(), x=e.clientX-r.left; if(x<LABELW) return;
+  seek(view.start+(x-LABELW)/(r.width-LABELW)*(view.end-view.start));
+});
+$('#timeline').addEventListener('wheel',e=>{
+  if(!R) return; e.preventDefault();
+  const r=e.target.getBoundingClientRect(), x=Math.max(0,e.clientX-r.left-LABELW)/(r.width-LABELW);
+  const span=view.end-view.start, t=view.start+x*span, f=e.deltaY>0?1.25:0.8;
+  let ns=Math.min(R.duration,Math.max(2,span*f)); let s=t-x*ns; s=Math.max(0,Math.min(R.duration-ns,s));
+  view={start:s,end:s+ns}; drawTimeline();
+},{passive:false});
+
+function drawProbs(){
+  const cv=$('#probs'); const {ctx,w,h}=setupCanvas(cv,150);
+  const {probs}=R.activity; const T=probs.length; if(!T) return;
+  const thr=+$('#thr').value;
+  ctx.strokeStyle='#2b343f'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(0,h-thr*h); ctx.lineTo(w,h-thr*h); ctx.stroke(); ctx.setLineDash([]);
+  D.spk.forEach(p=>{
+    ctx.strokeStyle=color(p.i); ctx.lineWidth=1.2; ctx.beginPath();
+    const stride=Math.max(1,Math.floor(T/w));
+    for (let x=0;x<w;x++){ const t0=Math.floor(x/w*T); let m=0; for(let t=t0;t<Math.min(T,t0+stride);t++) m=Math.max(m,probs[t][p.ch]); const y=h-2-m*(h-4); x?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke();
+  });
+}
+
+function drawShare(){
+  const cv=$('#share'); const {ctx,w,h}=setupCanvas(cv,Math.max(60,D.N*34+10));
+  const max=Math.max(...D.spk.map(p=>p.total),1e-6); ctx.font='12.5px Inter'; ctx.textBaseline='middle';
+  D.spk.forEach(p=>{
+    const y=p.i*34+6, bw=(w-230)*p.total/max;
+    ctx.fillStyle='#c9d1d9'; ctx.fillText(name(p.i).slice(0,16),0,y+12);
+    ctx.fillStyle=color(p.i); ctx.fillRect(120,y+2,Math.max(2,bw),20);
+    ctx.fillStyle='#c9d1d9'; ctx.fillText(`${pct(p.total,D.speech)} · ${fmtShort(p.total)}`,128+bw,y+12);
+  });
+}
+
+// ---------- playback sync ----------
+function seek(t){ if(media){ media.currentTime=t; if(media.paused) media.play().catch(()=>{}); } }
+let lastActive='';
+function tick(){
+  if(!D||!media) return;
+  const t=media.currentTime;
+  if (t<view.start||t>view.end){ const span=view.end-view.start; const s=Math.max(0,Math.min(R.duration-span,t-span*0.1)); view={start:s,end:s+span}; }
+  drawTimeline();
+  const act=D.segs.map((s,k)=>[s,k]).filter(([s])=>s.start<=t&&s.end>t);
+  const key=act.map(a=>a[1]).join(',');
+  if (key!==lastActive){
+    lastActive=key;
+    $('#now').innerHTML = act.length ? '<span style="color:var(--muted);font-size:12px">Speaking now</span>'+act.map(([s])=>`<span class="chip"><span class="dot" style="background:${color(s.spk)}"></span>${esc(name(s.spk))}</span>`).join('') : '<span style="color:var(--muted);font-size:12px">No one speaking</span>';
+    document.querySelectorAll('#segbody tr.active').forEach(r=>r.classList.remove('active'));
+    act.forEach(([,k])=>{ const tr=document.querySelector(`#segbody tr[data-k="${k}"]`); if(tr) tr.classList.add('active'); });
+  }
+}
+function loop(){ if(media && !media.paused) tick(); requestAnimationFrame(loop); } loop();
+window.addEventListener('resize',()=>D&&(drawTimeline(),drawProbs(),drawShare()));
+
+// ---------- downloads ----------
+document.querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{
+  if(!D) return; const kind=b.dataset.dl, base=(R.filename||'audio').replace(/\.[^.]+$/,'');
+  let out='', mime='text/plain';
+  if(kind==='rttm') out=D.segs.map(s=>`SPEAKER ${base} 1 ${s.start.toFixed(3)} ${(s.end-s.start).toFixed(3)} <NA> <NA> ${name(s.spk).replace(/\s+/g,'_')} <NA> <NA>`).join('\n')+'\n';
+  if(kind==='csv') out='speaker,start,end,duration\n'+D.segs.map(s=>`"${name(s.spk)}",${s.start.toFixed(3)},${s.end.toFixed(3)},${(s.end-s.start).toFixed(3)}`).join('\n')+'\n';
+  if(kind==='srt'){ const ts=x=>{const ms=Math.round(x*1000);const h=Math.floor(ms/3.6e6),m=Math.floor(ms%3.6e6/6e4),s=Math.floor(ms%6e4/1000);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms%1000).padStart(3,'0')}`};
+    out=D.segs.map((s,k)=>`${k+1}\n${ts(s.start)} --> ${ts(s.end)}\n[${name(s.spk)}]\n`).join('\n'); }
+  if(kind==='json'){ mime='application/json'; out=JSON.stringify({file:R.filename,duration:R.duration,model:R.model,
+    speakers:D.spk.map(p=>({name:name(p.i),talk_time:+p.total.toFixed(3),segments:p.turns,longest:+p.longest.toFixed(3),first:+p.first.toFixed(3),last:+p.last.toFixed(3),overlap:+p.overlap.toFixed(3)})),
+    segments:D.segs.map(s=>({speaker:name(s.spk),start:+s.start.toFixed(3),end:+s.end.toFixed(3)})),
+    summary:{speech:D.speech,silence:D.silence,overlap:D.overlap,turns:D.turns.length,interruptions:D.interruptions}},null,2); }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([out],{type:mime})); a.download=`${base}.${kind}`; a.click();
+});
+</script>
+</body>
+</html>

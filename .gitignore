@@ -1,0 +1,17 @@
+# environments and local settings
+.venv/
+venv/
+.env
+__pycache__/
+*.pyc
+
+# large artifacts: published as GitHub release assets, not in git
+rknn_models/*.rknn
+conversion/*.onnx
+dist/
+*.part
+
+# logs and editor state
+*.log
+.idea/
+.vscode/
