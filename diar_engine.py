@@ -153,8 +153,23 @@ def detect_rk_platform() -> str | None:
     return None
 
 
+def _total_ram_gb() -> float:
+    try:
+        with open("/proc/meminfo") as f:
+            return int(f.readline().split()[1]) / 2**20  # MemTotal, kB
+    except (OSError, ValueError, IndexError):
+        return float("inf")
+
+
 def rknn_model_path(platform: str) -> str:
-    return os.path.join(RKNN_DIR, f"nemotron3_diarization_{RK_PLATFORMS[platform][0]}.rknn")
+    """RKNN_PRECISION: fp16, int8 (~half the NPU memory, ~1 % of frames decided differently), or auto: int8 on boards
+    with less than 2 GB of RAM or when the fp16 model is missing, else fp16."""
+    stem = os.path.join(RKNN_DIR, f"nemotron3_diarization_{RK_PLATFORMS[platform][0]}")
+    precision = os.environ.get("RKNN_PRECISION", "auto").lower()
+    if precision == "auto":
+        small = _total_ram_gb() < 2 or not os.path.exists(stem + ".rknn")
+        precision = "int8" if small and os.path.exists(stem + "_int8.rknn") else "fp16"
+    return stem + ("_int8.rknn" if precision == "int8" else ".rknn")
 
 
 def make_rknn_runner(platform: str):
@@ -187,12 +202,14 @@ def make_rknn_runner(platform: str):
     if cores == 1:  # RK3566/RK3568 have a single core and reject explicit core masks
         requested = "auto"
     if rknn.init_runtime(core_mask=masks[requested]) != 0:
-        raise RuntimeError(f"init_runtime failed (core_mask={requested}); is the rknpu driver loaded?")
+        raise RuntimeError(f"init_runtime failed (core_mask={requested}); is the rknpu driver loaded and "
+                           "librknnrt.so in /usr/lib?")
 
     def run(x, valid):
         return rknn.inference(inputs=[x, valid])[0]
 
-    core_desc = f"{cores} core{'s' if cores > 1 else ''}, mask={requested}"
+    precision = "int8" if path.endswith("_int8.rknn") else "fp16"
+    core_desc = f"{cores} core{'s' if cores > 1 else ''}, mask={requested}, {precision}"
     return run, core_desc
 
 
@@ -225,6 +242,30 @@ def _from_pretrained(cls, **kwargs):
         return cls.from_pretrained(MODEL_ID, local_files_only=True, **kwargs)
     except Exception:
         return cls.from_pretrained(MODEL_ID, **kwargs)
+
+
+def _load_without_encoder():
+    """The model minus its transformer encoder layers, for backends that run them in an exported graph.
+
+    Only the feature-stacking embedder and `silence_embeds` are used on the CPU then, so the ~390 MB of fp32 encoder
+    weights are never read: what makes the 1 GB RK3566 boards fit.
+    """
+    from huggingface_hub import hf_hub_download
+    from safetensors import safe_open
+    from transformers import AutoConfig
+
+    config = _from_pretrained(AutoConfig)
+    try:
+        path = hf_hub_download(MODEL_ID, "model.safetensors", local_files_only=True)
+    except Exception:
+        path = hf_hub_download(MODEL_ID, "model.safetensors")
+    with torch.device("meta"):
+        model = AutoModelForAudioFrameClassification.from_config(config)
+    model.model.audio_tower.layers = nn.ModuleList()
+    with safe_open(path, "pt") as f:
+        state = {k: f.get_tensor(k) for k in f.keys() if ".audio_tower.layers." not in k}
+    model.load_state_dict(state, strict=False, assign=True)
+    return model.eval()
 
 
 def _mps_available() -> bool:
@@ -291,7 +332,8 @@ class DiarizationEngine:
 
     def _setup(self, backend: str, onnx_path: str | None) -> None:
         self.model = None
-        model = _from_pretrained(AutoModelForAudioFrameClassification).eval()
+        accelerated = backend in ("rknn", "rknn-sim", "onnx")
+        model = _load_without_encoder() if accelerated else _from_pretrained(AutoModelForAudioFrameClassification).eval()
         self.device = "cpu"
         if backend == "cuda":
             if not torch.cuda.is_available():
@@ -327,6 +369,8 @@ class DiarizationEngine:
             hidden_size = model.config.audio_config.hidden_size
             model.model = AcceleratedStep(model.model.audio_tower.embedder, run, length, hidden_size)
             model.classifier = nn.Identity()  # the accelerated graph already ends with the classifier
+            if any(t.is_meta for t in (*model.parameters(), *model.buffers())):
+                raise RuntimeError("model weights missing after loading without the encoder")
         self.backend = backend
         self.model = model
 

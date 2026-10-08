@@ -7,7 +7,7 @@ It runs on whatever hardware is available and picks the fastest option automatic
 
 | Hardware | Backend | Notes |
 |---|---|---|
-| Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | `rknn` | converted FP16 models in `rknn_models/` |
+| Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | `rknn` | converted models in `rknn_models/`: FP16, or INT8 for 1 GB boards |
 | NVIDIA GPU | `cuda` | any CUDA GPU (tested on a 4 GB GTX 1650) |
 | Apple Silicon GPU | `mps` | macOS |
 | Any CPU (x86_64, arm64) | `cpu` | ~60x real time on a 6-core laptop CPU |
@@ -95,7 +95,7 @@ Parameters: `threshold`, `min_segment`, `merge_gap`, `include_probabilities`, `f
   re-segment instantly).
 - On the NPU, the heavy part (31-layer transformer encoder + classifier, 99M params) is exported as one fixed-shape
   graph (684 encoder frames = speaker cache 264 + FIFO 40 + chunk 340 + look-ahead 40), padded and masked, and
-  compiled to FP16 RKNN. Feature extraction, feature stacking and the Arrival-Order Speaker Cache stay the original
+  compiled to FP16 RKNN, and to hybrid INT8 RKNN for 1 GB boards (attention scores stay FP16). Feature extraction, feature stacking and the Arrival-Order Speaker Cache stay the original
   transformers code on the CPU, so results match the GPU.
 - RKNN validation (x86 simulator, FP16, full pipeline): identical segments to the GPU on the 52 s sample for
   rk3566/rk3576/rk3588; on the 186 s sample 72/72 segments match, and 0.02 % of 10 ms frames differ at a boundary.
@@ -153,4 +153,8 @@ python conversion/export_onnx.py
 # WSL / x86 Linux: venv with rknn-toolkit2==2.3.2, onnx==1.16.2, protobuf==4.25.4, numpy==1.26.4, torch>=2.7 (cpu),
 #      transformers==5.19.0, librosa==0.11.0, onnxruntime
 python conversion/convert_rknn.py --check
+# INT8: calibration set from real audio, then hybrid quantization, then end-to-end scoring in the simulator
+python conversion/calib_data.py samples/meeting.wav samples/long.wav
+python conversion/convert_rknn.py --quant int8
+python conversion/quant_eval.py --platform rk3566
 ```

@@ -3,8 +3,12 @@
     python scripts/download_models.py              # the model for the board this runs on
     python scripts/download_models.py rk3576       # a specific SoC: rk3566 | rk3568 | rk3576 | rk3588
     python scripts/download_models.py all          # all three models (~720 MB)
+    python scripts/download_models.py --int8 ...   # the int8 models (~half the size and NPU memory)
+    python scripts/download_models.py --fp16 ...   # the fp16 models
 
-The models are too large for git (221-253 MB each), so they are published as assets of the release
+Without --int8/--fp16 the int8 model is chosen on boards with less than 2 GB of RAM, fp16 otherwise.
+
+The models are too large for git (fp16 221-253 MB, int8 ~150 MB each), so they are published as assets of the release
 MODELS_TAG (default rknn-models-v1). Download methods, tried in order:
   1. the GitHub CLI (`gh`), if it is installed and logged in (works for private repositories)
   2. HTTPS with GITHUB_TOKEN, if set (private repositories)
@@ -26,7 +30,7 @@ REPO = os.environ.get("MODELS_REPO", "anand34577/nemotron-diarization")
 TAG = os.environ.get("MODELS_TAG", "rknn-models-v1")
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEST = os.environ.get("RKNN_DIR", os.path.join(HERE, "rknn_models"))
-FILES = {s: f"nemotron3_diarization_{s}.rknn" for s in ("rk3566", "rk3576", "rk3588")}
+SOCS = ("rk3566", "rk3576", "rk3588")
 ALIASES = {"rk3568": "rk3566"}  # RK3568 runs the RK3566 model
 
 
@@ -44,6 +48,14 @@ def detect_soc() -> str | None:
             if name in compatible:
                 return name
     return None
+
+
+def total_ram_gb() -> float:
+    try:
+        with open("/proc/meminfo") as f:
+            return int(f.readline().split()[1]) / 2**20  # MemTotal, kB
+    except (OSError, ValueError, IndexError):
+        return float("inf")
 
 
 def checksums() -> dict:
@@ -112,24 +124,35 @@ def fetch(name: str, expected: str) -> None:
 
 
 def main():
-    arg = (sys.argv[1] if len(sys.argv) > 1 else "").lower()
-    if arg in ("-h", "--help"):
+    args = [a.lower() for a in sys.argv[1:]]
+    if "-h" in args or "--help" in args:
         print(__doc__)
         return
+    if "--int8" in args:
+        suffix = "_int8"
+    elif "--fp16" in args:
+        suffix = ""
+    else:
+        suffix = "_int8" if total_ram_gb() < 2 else ""
+    positional = [a for a in args if not a.startswith("--")]
+    arg = positional[0] if positional else ""
     if arg == "all":
-        socs = list(FILES)
+        socs = list(SOCS)
     else:
         soc = arg or detect_soc()
         if not soc:
             sys.exit("No Rockchip SoC detected. Name one: rk3566 | rk3568 | rk3576 | rk3588 | all")
         soc = ALIASES.get(soc, soc)
-        if soc not in FILES:
+        if soc not in SOCS:
             sys.exit(f"Unknown SoC {soc!r}. Choose rk3566 | rk3568 | rk3576 | rk3588 | all")
         socs = [soc]
     os.makedirs(DEST, exist_ok=True)
     sums = checksums()
     for soc in socs:
-        fetch(FILES[soc], sums[FILES[soc]])
+        name = f"nemotron3_diarization_{soc}{suffix}.rknn"
+        if name not in sums:
+            sys.exit(f"{name}: not published in release {TAG} (no checksum in rknn_models/SHA256SUMS)")
+        fetch(name, sums[name])
 
 
 if __name__ == "__main__":

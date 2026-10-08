@@ -128,11 +128,12 @@ docker run -d --name nemotron-diarization --privileged -p 7860:7860 --restart un
 Compose equivalent: `COMPOSE_PROFILES=rknn` and `RKNN_ACCEPT_LICENSE=yes` in `.env`, then `docker compose up -d`.
 See [DOCKER.md](DOCKER.md#rockchip-npu-rknn).
 
-**Option B: build the image yourself.** The converted models (221-253 MB each) are too large for git. They are
+**Option B: build the image yourself.** The converted models (FP16 232-265 MB, INT8 124-157 MB each) are too large for git. They are
 assets of the GitHub release `rknn-models-v1`, with checksums in `rknn_models/SHA256SUMS`:
 ```bash
 gh auth login                                   # once; the repository is private (or: export GITHUB_TOKEN=<token>)
 python3 scripts/download_models.py              # this board's model (or: rk3566 | rk3568 | rk3576 | rk3588 | all)
+                                                # int8 on boards below 2 GB of RAM; force with --int8 / --fp16
 docker compose --profile rknn up -d --build
 ```
 
