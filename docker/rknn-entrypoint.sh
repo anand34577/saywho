@@ -16,4 +16,9 @@ case "$(echo "${RKNN_ACCEPT_LICENSE:-no}" | tr 'A-Z' 'a-z')" in
     fi ;;
 esac
 
+# rknn-toolkit-lite2 only looks for the runtime at /usr/lib/librknnrt.so (LD_LIBRARY_PATH is not enough)
+if [ -f /opt/rknn/lib/librknnrt.so ]; then
+  ln -sf /opt/rknn/lib/librknnrt.so /usr/lib/librknnrt.so
+fi
+
 exec "$@"
