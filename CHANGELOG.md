@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.0 - 2026-10-08
+
+### Added
+- INT8 RKNN models for RK3566/RK3568, RK3576 and RK3588 (`nemotron3_diarization_<soc>_int8.rknn`, 124-157 MB
+  instead of 232-265 MB), so the NPU backend fits boards with 1 GB of RAM. Hybrid quantization: int8 weights and
+  activations, with the attention score path kept in fp16 (plain int8 breaks it: 60 % of frames decided
+  differently). In the simulator, every segment of both samples matches the GPU reference within 0.1 s, with ~1 % of
+  10 ms frames decided differently. `RKNN_PRECISION=auto|int8|fp16`; `auto` picks int8 below 2 GB of RAM.
+- `conversion/convert_rknn.py --quant int8`, `conversion/calib_data.py` (calibration set from real audio) and
+  `conversion/quant_eval.py` (end-to-end simulator scoring against the reference).
+- `scripts/download_models.py --int8 | --fp16`; without either, int8 is downloaded on boards below 2 GB of RAM.
+
+### Changed
+- The rknn and onnx backends no longer load the transformer encoder weights into PyTorch; only the feature
+  embedder runs on the CPU.
+
+### Fixed
+- `rknn` Docker image: the NPU backend failed with "Can not find dynamic library" because rknn-toolkit-lite2 only
+  looks for `/usr/lib/librknnrt.so`; the entrypoint now links the downloaded runtime there.
+
 ## 2.1.0 - 2026-10-07
 
 ### Added
