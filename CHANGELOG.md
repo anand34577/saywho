@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.1 - 2026-10-24
+
+### Fixed
+- The INT8 RKNN models are no longer chosen automatically. On a real 11.8 min recording on an RK3576 the INT8
+  model found 7 speakers where FP16 found the correct 2, although it matched the reference in the simulator on the
+  test samples (including one held out of calibration). FP16 is the default again on every board, including those
+  below 2 GB of RAM; INT8 stays available as an experiment with `RKNN_PRECISION=int8` and `download_models.py --int8`.
+
 ## 2.2.0 - 2026-10-08
 
 ### Added

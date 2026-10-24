@@ -123,7 +123,7 @@ Set them with `-e NAME=value` (`docker run`) or in `.env` (compose). All are opt
 | `CUDA_DEVICE` | `0` | GPU index when several are visible (or restrict with `--gpus '"device=1"'`) |
 | `NPU_CORE_MASK` | `all` | Rockchip: `all`, `auto`, `0`, `1`, `2`, `0_1`, `0_1_2` |
 | `RK_PLATFORM` | *(detected)* | Rockchip: force `rk3566`, `rk3568`, `rk3576` or `rk3588` if detection fails |
-| `RKNN_PRECISION` | `auto` | Rockchip: `int8` (about half the NPU memory, for 1 GB boards), `fp16`, or `auto` (int8 below 2 GB of RAM) |
+| `RKNN_PRECISION` | `fp16` | Rockchip: `fp16`, or `int8` (experimental: about half the NPU memory, but can be badly wrong on real recordings, e.g. too many speakers) |
 | `RKNN_ACCEPT_LICENSE` | `no` | Rockchip: `yes` accepts Rockchip's RKNN SDK License and downloads the NPU runtime on start |
 
 ### Limits and defaults

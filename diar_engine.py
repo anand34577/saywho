@@ -153,22 +153,11 @@ def detect_rk_platform() -> str | None:
     return None
 
 
-def _total_ram_gb() -> float:
-    try:
-        with open("/proc/meminfo") as f:
-            return int(f.readline().split()[1]) / 2**20  # MemTotal, kB
-    except (OSError, ValueError, IndexError):
-        return float("inf")
-
-
 def rknn_model_path(platform: str) -> str:
-    """RKNN_PRECISION: fp16, int8 (~half the NPU memory, ~1 % of frames decided differently), or auto: int8 on boards
-    with less than 2 GB of RAM or when the fp16 model is missing, else fp16."""
+    """RKNN_PRECISION: fp16 (default) or int8. The int8 models are experimental: they need about half the NPU memory,
+    but on real recordings outside their calibration set they can be badly wrong (e.g. too many speakers)."""
     stem = os.path.join(RKNN_DIR, f"nemotron3_diarization_{RK_PLATFORMS[platform][0]}")
-    precision = os.environ.get("RKNN_PRECISION", "auto").lower()
-    if precision == "auto":
-        small = _total_ram_gb() < 2 or not os.path.exists(stem + ".rknn")
-        precision = "int8" if small and os.path.exists(stem + "_int8.rknn") else "fp16"
+    precision = os.environ.get("RKNN_PRECISION", "fp16").lower()
     return stem + ("_int8.rknn" if precision == "int8" else ".rknn")
 
 

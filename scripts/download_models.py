@@ -3,10 +3,7 @@
     python scripts/download_models.py              # the model for the board this runs on
     python scripts/download_models.py rk3576       # a specific SoC: rk3566 | rk3568 | rk3576 | rk3588
     python scripts/download_models.py all          # all three models (~720 MB)
-    python scripts/download_models.py --int8 ...   # the int8 models (~half the size and NPU memory)
-    python scripts/download_models.py --fp16 ...   # the fp16 models
-
-Without --int8/--fp16 the int8 model is chosen on boards with less than 2 GB of RAM, fp16 otherwise.
+    python scripts/download_models.py --int8 ...   # the experimental int8 models instead of fp16
 
 The models are too large for git (fp16 221-253 MB, int8 ~150 MB each), so they are published as assets of the release
 MODELS_TAG (default rknn-models-v1). Download methods, tried in order:
@@ -48,14 +45,6 @@ def detect_soc() -> str | None:
             if name in compatible:
                 return name
     return None
-
-
-def total_ram_gb() -> float:
-    try:
-        with open("/proc/meminfo") as f:
-            return int(f.readline().split()[1]) / 2**20  # MemTotal, kB
-    except (OSError, ValueError, IndexError):
-        return float("inf")
 
 
 def checksums() -> dict:
@@ -128,12 +117,7 @@ def main():
     if "-h" in args or "--help" in args:
         print(__doc__)
         return
-    if "--int8" in args:
-        suffix = "_int8"
-    elif "--fp16" in args:
-        suffix = ""
-    else:
-        suffix = "_int8" if total_ram_gb() < 2 else ""
+    suffix = "_int8" if "--int8" in args else ""
     positional = [a for a in args if not a.startswith("--")]
     arg = positional[0] if positional else ""
     if arg == "all":
