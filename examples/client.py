@@ -1,7 +1,7 @@
-"""Minimal Python client for the Nemotron Diarization API (needs `pip install requests`).
+"""Minimal Python client for the saywho API (needs `pip install requests`).
 
-    python examples/client.py meeting.mp4                       # print speakers and segments
-    python examples/client.py meeting.mp4 --format rttm -o out.rttm
+    python examples/client.py samples/earnest.flac             # print speakers and segments
+    python examples/client.py meeting.mp4 --format rttm -o meeting.rttm
     python examples/client.py long_recording.mp3 --job          # async job API, for long files
     python examples/client.py x.wav --url http://board:7860 --api-key KEY --threshold 0.4
 """

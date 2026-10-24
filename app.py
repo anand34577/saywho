@@ -1,7 +1,7 @@
-"""Nemotron-3-Diarization server: REST API + web UI.
+"""saywho server: speaker diarization (who spoke when) as a REST API and a web UI.
 
 Upload any audio/video file; ffmpeg extracts 16 kHz mono audio, the model returns per-speaker activity
-probabilities, and the server turns them into segments, per-speaker statistics and RTTM/CSV/SRT/JSON exports.
+probabilities (nvidia/Nemotron-3-Diarization), and the server turns them into segments, per-speaker statistics and RTTM/CSV/SRT/JSON exports.
 
     python app.py                      # http://127.0.0.1:7860  (UI at /, API docs at /docs)
 
@@ -33,8 +33,9 @@ from audio_io import SAMPLE_RATE, AudioDecodeError, ffmpeg_path, load_audio
 from segmentation import analyze, export
 from timing import stage_clock
 
-__version__ = "2.2.1"
+__version__ = "2.3.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
+SAMPLE = os.path.join(HERE, "samples", "earnest.flac")  # public-domain clip, see samples/README.md
 MAX_SENT_FRAMES = 150_000  # cap on probability frames returned when include_probabilities=true
 LEVELS = {"critical": 50, "error": 40, "warning": 30, "info": 20, "debug": 10}
 
@@ -294,7 +295,7 @@ def diarize_params(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Nemotron Diarization server %s starting; loading %s (backend=%s)", __version__, settings.MODEL_ID, settings.DIAR_BACKEND)
+    log.info("saywho %s starting; loading %s (backend=%s)", __version__, settings.MODEL_ID, settings.DIAR_BACKEND)
     if not ffmpeg_path():
         log.warning("ffmpeg not found: only WAV/FLAC/OGG/MP3 can be decoded (pip install imageio-ffmpeg, or install ffmpeg)")
     if settings.API_KEY:
@@ -305,10 +306,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Nemotron Diarization API",
+    title="saywho API",
     version=__version__,
-    description="Speaker diarization (who spoke when) with nvidia/Nemotron-3-Diarization on Rockchip NPU, "
-                "NVIDIA GPU, Apple GPU or CPU. See docs/API.md for examples.",
+    description="Speaker diarization (who spoke when) on a Rockchip NPU, NVIDIA GPU, Apple GPU or CPU, using the "
+                "nvidia/Nemotron-3-Diarization model. Guides: https://github.com/anand34577/saywho/wiki",
     lifespan=lifespan,
 )
 if settings.CORS_ORIGINS:
@@ -428,6 +429,13 @@ if settings.ENABLE_UI:
 
     app.mount("/static", StaticFiles(directory=os.path.join(HERE, "static")), name="static")
 
+    @app.get("/sample", include_in_schema=False)
+    def sample():
+        """The bundled demo recording, for the UI's "Try the sample" button."""
+        if not os.path.isfile(SAMPLE):
+            raise HTTPException(404, "No sample recording in this install.")
+        return FileResponse(SAMPLE, media_type="audio/flac", filename="earnest.flac")
+
 
 def check() -> int:
     """`python app.py --check`: load the model with the current settings, diarize the bundled sample, report."""
@@ -441,9 +449,8 @@ def check() -> int:
     for reason in info["fallbacks"]:
         print(f"fallback:    {reason}")
     print(f"ffmpeg:      {ffmpeg_path() or 'not found (only WAV/FLAC/OGG/MP3 supported)'}")
-    sample = os.path.join(HERE, "samples", "meeting.wav")
-    if os.path.exists(sample):
-        r = diarize_file(sample, "meeting.wav", settings.DEFAULT_THRESHOLD, settings.DEFAULT_MIN_SEGMENT,
+    if os.path.exists(SAMPLE):
+        r = diarize_file(SAMPLE, "earnest.flac", settings.DEFAULT_THRESHOLD, settings.DEFAULT_MIN_SEGMENT,
                          settings.DEFAULT_MERGE_GAP, False)
         print(f"sample:      {r['duration']:.0f} s audio, {r['num_speakers']} speakers, {len(r['segments'])} segments, "
               f"{r['real_time_factor']:.0f}x real time")

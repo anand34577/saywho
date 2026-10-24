@@ -1,6 +1,6 @@
 name: docker
 
-# Builds and publishes ghcr.io/<owner>/nemotron-diarization:
+# Builds and publishes ghcr.io/<owner>/saywho:
 #   cpu   linux/amd64 + linux/arm64
 #   cuda  linux/amd64 + linux/arm64
 #   rknn  linux/arm64
@@ -18,6 +18,8 @@ on:
       - ".dockerignore"
       - "requirements*.txt"
       - "docker/**"
+      - "samples/**"
+      - "static/**"
       - "scripts/fetch_rknn_runtime.py"
       - "*.py"
       - ".github/workflows/docker.yml"
@@ -89,8 +91,9 @@ jobs:
             sleep 2
           done
           curl -sf localhost:7860/api/v1/info | tee /tmp/info.json; echo
-          python3 -c "import wave,random; w=wave.open('/tmp/t.wav','wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(random.getrandbits(8) for _ in range(16000*2*3))); w.close()"
-          curl -sf -F file=@/tmp/t.wav localhost:7860/api/v1/diarize | python3 -c "import json,sys; r=json.load(sys.stdin); print('backend', r['backend'], 'duration', r['duration'], 'timings', r['timings']['total'])"
+          # the bundled 3-voice sample: fails the build if the model output is broken
+          curl -sf -F file=@samples/earnest.flac localhost:7860/api/v1/diarize | python3 -c "import json,sys; r=json.load(sys.stdin); print('backend', r['backend'], 'speakers', r['num_speakers'], 'segments', len(r['segments']), 'total', r['timings']['total']); sys.exit(r['num_speakers'] < 2)"
+          curl -sf -o /dev/null localhost:7860/sample
           docker exec smoke ls /licenses
           docker exec smoke python -c "import torch; print('torch', torch.__version__, 'compiled cuda archs:', torch._C._cuda_getArchFlags() if torch.version.cuda else 'none')"
           docker logs smoke 2>&1 | tail -20

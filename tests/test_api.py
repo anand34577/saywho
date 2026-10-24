@@ -157,6 +157,13 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(self.client.delete(job["status_url"]).status_code, 204)
         self.assertEqual(self.client.get(job["status_url"]).status_code, 404)
 
+    def test_ui_and_sample(self):
+        self.assertIn("saywho", self.client.get("/").text)
+        r = self.client.get("/sample")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "audio/flac")
+        self.assertEqual(sf.info(io.BytesIO(r.content)).samplerate, SR)
+
     def test_legacy_routes(self):
         self.assertEqual(self.client.get("/api/info").json()["backend"], "fake")
         body = self.post("/api/diarize").json()

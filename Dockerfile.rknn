@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1
-# Nemotron-3-Diarization server for Rockchip NPUs (RK3566 / RK3568 / RK3576 / RK3588), linux/arm64.
-# Prebuilt image: ghcr.io/anand34577/nemotron-diarization:rknn (see docs/DOCKER.md).
+# saywho (speaker diarization) for Rockchip NPUs (RK3566 / RK3568 / RK3576 / RK3588), linux/arm64.
+# Prebuilt image: ghcr.io/anand34577/saywho:rknn (see docs/DOCKER.md).
 #
 #   python3 scripts/download_models.py all      # the .rknn models must be in rknn_models/ before building
-#   docker build -f Dockerfile.rknn -t nemotron-diarization:rknn .
+#   docker build -f Dockerfile.rknn -t saywho:rknn .
 #
 # Rockchip's NPU runtime is NOT in the image (proprietary RKNN SDK License). With RKNN_ACCEPT_LICENSE=yes the
 # entrypoint downloads it from Rockchip on first start into /opt/rknn. Without it, or without a working NPU driver,
 # the server runs on the board's CPU.
 FROM python:3.11-slim-bookworm
 
-LABEL org.opencontainers.image.title="Nemotron Diarization (Rockchip NPU)" \
-      org.opencontainers.image.description="Speaker diarization API and web UI on RK3566/RK3568/RK3576/RK3588 NPUs. Rockchip runtime downloaded on first start after license acceptance. Third-party licenses in /licenses." \
-      org.opencontainers.image.source="https://github.com/anand34577/nemotron-diarization" \
+LABEL org.opencontainers.image.title="saywho (Rockchip NPU)" \
+      org.opencontainers.image.description="Who spoke when: speaker diarization web app and REST API on RK3566/RK3568/RK3576/RK3588 NPUs. Rockchip runtime downloaded on first start after license acceptance. Third-party licenses in /licenses." \
+      org.opencontainers.image.source="https://github.com/anand34577/saywho" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV PYTHONUNBUFFERED=1 \
@@ -60,6 +60,7 @@ RUN mkdir -p /opt/rknn/lib /opt/rknn/python
 WORKDIR /app
 COPY app.py diar_engine.py settings.py segmentation.py audio_io.py timing.py bench.py ./
 COPY static ./static
+COPY samples/earnest.flac samples/README.md ./samples/
 COPY conversion/validate.py ./conversion/validate.py
 COPY scripts/fetch_rknn_runtime.py scripts/download_models.py ./scripts/
 COPY --chmod=755 docker/rknn-entrypoint.sh ./docker/rknn-entrypoint.sh

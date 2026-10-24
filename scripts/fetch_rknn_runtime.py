@@ -38,7 +38,7 @@ def sha256(path: str) -> str:
 
 def download(url: str, dest: str, expected: str) -> None:
     tmp = dest + ".part"
-    req = urllib.request.Request(url, headers={"User-Agent": "nemotron-diarization"})
+    req = urllib.request.Request(url, headers={"User-Agent": "saywho"})
     with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
         for block in iter(lambda: r.read(1 << 20), b""):
             f.write(block)
