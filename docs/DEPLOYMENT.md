@@ -133,7 +133,7 @@ assets of the GitHub release `rknn-models-v1`, with checksums in `rknn_models/SH
 ```bash
 gh auth login                                   # once; the repository is private (or: export GITHUB_TOKEN=<token>)
 python3 scripts/download_models.py              # this board's model (or: rk3566 | rk3568 | rk3576 | rk3588 | all)
-                                                # int8 on boards below 2 GB of RAM; force with --int8 / --fp16
+                                                # add --int8 for the experimental int8 models
 docker compose --profile rknn up -d --build
 ```
 
