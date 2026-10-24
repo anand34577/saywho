@@ -27,12 +27,12 @@ Python 3.10-3.13 for native installs, and Docker Compose v2 for Docker installs.
 ### Get the code
 
 ```bash
-git clone https://github.com/anand34577/nemotron-diarization.git
-cd nemotron-diarization
+git clone https://github.com/anand34577/saywho.git
+cd saywho
 ```
 
-The repository is private: you need read access, and `git` must be logged in, for example through `gh auth login`.
-Every command below runs from this folder.
+No GitHub account is needed. Every command below runs from this folder. Without git, download the ZIP from the
+green **Code** button on GitHub and unpack it.
 
 ---
 
@@ -89,8 +89,8 @@ Prebuilt images are published on ghcr.io: `cpu` (amd64 + arm64), `cuda` (amd64 +
 GPU and NPU host setup, licenses and troubleshooting. In short:
 
 ```bash
-docker run -d -p 7860:7860 ghcr.io/anand34577/nemotron-diarization:cpu                  # any machine
-docker run -d -p 7860:7860 --gpus all ghcr.io/anand34577/nemotron-diarization:cuda      # NVIDIA GPU
+docker run -d -p 7860:7860 ghcr.io/anand34577/saywho:cpu                  # any machine
+docker run -d -p 7860:7860 --gpus all ghcr.io/anand34577/saywho:cuda      # NVIDIA GPU
 ```
 
 From a clone, `docker compose --profile cpu|cuda|rknn up -d` pulls the matching image. Add `--build` to build it
@@ -99,9 +99,9 @@ locally instead.
 ### Moving an image to a machine without internet
 
 ```bash
-docker pull ghcr.io/anand34577/nemotron-diarization:cpu                                  # on a connected machine
-docker save ghcr.io/anand34577/nemotron-diarization:cpu | gzip > nemotron-diarization-cpu.tar.gz
-gunzip -c nemotron-diarization-cpu.tar.gz | docker load                                  # on the target
+docker pull ghcr.io/anand34577/saywho:cpu                                  # on a connected machine
+docker save ghcr.io/anand34577/saywho:cpu | gzip > saywho-cpu.tar.gz
+gunzip -c saywho-cpu.tar.gz | docker load                                  # on the target
 ```
 
 Add `--platform linux/arm64` to `docker pull` when the target is an arm64 machine.
@@ -122,8 +122,8 @@ project does not ship it. You accept that license and download the runtime direc
 
 **Option A: prebuilt Docker image** (simplest; the NPU models are included):
 ```bash
-docker run -d --name nemotron-diarization --privileged -p 7860:7860 --restart unless-stopped \
-  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/nemotron-diarization:rknn
+docker run -d --name saywho --privileged -p 7860:7860 --restart unless-stopped \
+  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/saywho:rknn
 ```
 Compose equivalent: `COMPOSE_PROFILES=rknn` and `RKNN_ACCEPT_LICENSE=yes` in `.env`, then `docker compose up -d`.
 See [DOCKER.md](DOCKER.md#rockchip-npu-rknn).
@@ -131,7 +131,6 @@ See [DOCKER.md](DOCKER.md#rockchip-npu-rknn).
 **Option B: build the image yourself.** The converted models (FP16 232-265 MB, INT8 124-157 MB each) are too large for git. They are
 assets of the GitHub release `rknn-models-v1`, with checksums in `rknn_models/SHA256SUMS`:
 ```bash
-gh auth login                                   # once; the repository is private (or: export GITHUB_TOKEN=<token>)
 python3 scripts/download_models.py              # this board's model (or: rk3566 | rk3568 | rk3576 | rk3588 | all)
                                                 # add --int8 for the experimental int8 models
 docker compose --profile rknn up -d --build
@@ -144,7 +143,7 @@ model, and, after you accept Rockchip's license, downloads the runtime (into the
 If the model or runtime is missing, the server still starts, on the CPU, and `/api/v1/info` → `fallbacks` says what
 to do.
 
-The header shows for example `RK3576 NPU (2 cores, mask=0_1)`.
+The header shows for example `RK3576 NPU (2 cores, mask=all, fp16)`.
 
 ### NPU cores
 
@@ -187,15 +186,15 @@ runs with `-vn`).
 
 ### Verify on the board
 
-The test recordings are not in the image. From a clone, copy them in first:
+The image includes the sample recording `samples/earnest.flac` (3 voices, 74 s):
 
 ```bash
-docker cp samples nemotron-diarization:/app/samples
-# correctness vs the GPU reference (expect identical segments, 3 speakers)
-docker exec nemotron-diarization python conversion/validate.py samples/meeting.wav --backend rknn --reference samples/meeting_ref.npy
-docker exec nemotron-diarization python conversion/validate.py samples/long.wav    --backend rknn --reference samples/long_ref.npy
+# the NPU result should match the CPU result: 3 speakers, 26 segments
+docker exec saywho python app.py --check
+# compare against the CPU model frame by frame (slow on the board's CPU, but thorough)
+docker exec saywho python conversion/validate.py samples/earnest.flac --backend rknn
 # speed for each core mask (stop the web app first to free the NPU, or run it while idle)
-docker exec nemotron-diarization python bench.py
+docker exec saywho python bench.py
 # per-core NPU load while a file is processing (host)
 sudo watch -n0.5 cat /sys/kernel/debug/rknpu/load
 ```
@@ -224,17 +223,17 @@ override `.env`. `.env.example` documents every option. The most useful ones:
 
 ### As a Linux service (native install)
 
-`/etc/systemd/system/diarization.service`:
+`/etc/systemd/system/saywho.service`:
 
 ```ini
 [Unit]
-Description=Nemotron Diarization API
+Description=saywho
 After=network-online.target
 
 [Service]
-User=diar
-WorkingDirectory=/opt/nemotron-diarization
-ExecStart=/opt/nemotron-diarization/.venv/bin/python app.py
+User=saywho
+WorkingDirectory=/opt/saywho
+ExecStart=/opt/saywho/.venv/bin/python app.py
 Environment=HF_HUB_OFFLINE=1
 Restart=on-failure
 
@@ -242,7 +241,7 @@ Restart=on-failure
 WantedBy=multi-user.target
 ```
 
-`sudo systemctl daemon-reload && sudo systemctl enable --now diarization`, then `journalctl -u diarization -f`.
+`sudo systemctl daemon-reload && sudo systemctl enable --now saywho`, then `journalctl -u saywho -f`.
 Run `install.sh` as the service user, so the model ends up in that user's cache.
 
 On Windows, run `run.bat` from Task Scheduler at log-on, or wrap `.venv\Scripts\python.exe app.py` with a service
@@ -293,13 +292,12 @@ RAM (measured after processing a 3-minute file), plus about 4 MB per minute of a
 `CUDA_DEVICE=1`) behind a load balancer. `/jobs` state is per instance, so use sticky sessions or a shared result
 store if you scale out with jobs.
 
-### Measured speed (52 s meeting sample)
+### Measured speed (the 74 s sample, after warm-up)
 
 | Hardware | Backend | Speed |
 |---|---|---|
-| NVIDIA GTX 1650 (4 GB) | cuda | ~110x real time |
-| AMD Ryzen 5 5600H, 6 cores | cpu | ~60x real time |
-| Same CPU | onnx | ~42x real time (CPU PyTorch is faster; ONNX is for validation) |
+| NVIDIA GTX 1650 (4 GB) | cuda | about 130x real time (an hour of audio in about 30 s) |
+| AMD Ryzen 5 5600H, 6 cores | cpu | about 35x real time (an hour of audio in under 2 minutes) |
 | RK3566 / RK3576 / RK3588 NPU | rknn | not measured yet: run `bench.py` on the board |
 
 On a GPU, a very long file that runs out of GPU memory is retried on the CPU automatically rather than failing.

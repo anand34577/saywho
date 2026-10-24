@@ -8,7 +8,7 @@ int8  nemotron3_diarization_<platform>_int8.rknn, ~125 MB: hybrid quantization, 
       the attention score path (QK^T, mask, softmax, attention x V), which stays fp16. Those tensors have no weights,
       but plain int8 breaks them: the -10000 padding mask stretches the score range so far that real scores collapse
       to one level, and most of the 684 attention weights are smaller than one int8 step of [0, 1].
-      Needs a calibration set: python conversion/calib_data.py samples/meeting.wav samples/long.wav
+      Needs a calibration set: python conversion/calib_data.py RECORDING [RECORDING ...]  (a few minutes of real speech)
 
 `--check` runs every built model in the rknn-toolkit2 simulator and compares it with onnxruntime.
 RK3568 uses the rk3566 model (same NPU).

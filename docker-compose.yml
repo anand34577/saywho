@@ -33,9 +33,9 @@ x-env: &env
 services:
   cpu:
     profiles: [cpu]
-    image: ghcr.io/anand34577/nemotron-diarization:cpu${IMAGE_VERSION:+-$IMAGE_VERSION}
+    image: ghcr.io/anand34577/saywho:cpu${IMAGE_VERSION:+-$IMAGE_VERSION}
     build: .
-    container_name: nemotron-diarization
+    container_name: saywho
     ports:
       - "${PORT:-7860}:7860"
     environment: *env
@@ -43,12 +43,12 @@ services:
 
   cuda:
     profiles: [cuda]
-    image: ghcr.io/anand34577/nemotron-diarization:cuda${IMAGE_VERSION:+-$IMAGE_VERSION}
+    image: ghcr.io/anand34577/saywho:cuda${IMAGE_VERSION:+-$IMAGE_VERSION}
     build:
       context: .
       args:
         TORCH_INDEX: https://download.pytorch.org/whl/cu129
-    container_name: nemotron-diarization
+    container_name: saywho
     ports:
       - "${PORT:-7860}:7860"
     environment: *env
@@ -63,11 +63,11 @@ services:
 
   rknn:
     profiles: [rknn]
-    image: ghcr.io/anand34577/nemotron-diarization:rknn${IMAGE_VERSION:+-$IMAGE_VERSION}
+    image: ghcr.io/anand34577/saywho:rknn${IMAGE_VERSION:+-$IMAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.rknn
-    container_name: nemotron-diarization
+    container_name: saywho
     # NPU access: /dev/dri (rknpu DRM node) and the device tree (SoC detection)
     privileged: true
     ports:

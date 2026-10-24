@@ -1,4 +1,4 @@
-Nemotron Diarization Server
+saywho
 Copyright 2026 Anand (github.com/anand34577)
 
 This product's own source code is licensed under the Apache License, Version 2.0 (see LICENSE).
@@ -10,3 +10,5 @@ conversions of that model and are distributed under the same agreement.
 
 The Docker images also contain third-party software under their own licenses, and the Rockchip NPU
 runtime is downloaded from Rockchip under Rockchip's RKNN SDK License. See THIRD_PARTY_NOTICES.md.
+
+samples/earnest.flac is an excerpt of a public-domain LibriVox recording (see samples/README.md).

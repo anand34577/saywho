@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1
-# Nemotron-3-Diarization server for CPU or NVIDIA GPU, linux/amd64 and linux/arm64. Rockchip NPU: Dockerfile.rknn.
-# Prebuilt images: ghcr.io/anand34577/nemotron-diarization:cpu and :cuda (see docs/DOCKER.md).
+# saywho (speaker diarization) for CPU or NVIDIA GPU, linux/amd64 and linux/arm64. Rockchip NPU: Dockerfile.rknn.
+# Prebuilt images: ghcr.io/anand34577/saywho:cpu and :cuda (see docs/DOCKER.md).
 #
-#   docker build -t nemotron-diarization:cpu .
-#   docker build -t nemotron-diarization:cuda --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu129 .
+#   docker build -t saywho:cpu .
+#   docker build -t saywho:cuda --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu129 .
 FROM python:3.11-slim-bookworm
 
 # cpu: https://download.pytorch.org/whl/cpu. cuda: .../whl/cu129, the CUDA build with wheels for both amd64 and arm64
 ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
 ARG TORCH_VERSION=2.8.0
 
-LABEL org.opencontainers.image.title="Nemotron Diarization" \
-      org.opencontainers.image.description="Speaker diarization API and web UI (nvidia/Nemotron-3-Diarization). Third-party licenses in /licenses." \
-      org.opencontainers.image.source="https://github.com/anand34577/nemotron-diarization" \
+LABEL org.opencontainers.image.title="saywho" \
+      org.opencontainers.image.description="Who spoke when: speaker diarization web app and REST API (model: nvidia/Nemotron-3-Diarization). Third-party licenses in /licenses." \
+      org.opencontainers.image.source="https://github.com/anand34577/saywho" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV PYTHONUNBUFFERED=1 \
@@ -54,6 +54,7 @@ RUN useradd --create-home --uid 1000 app
 WORKDIR /app
 COPY app.py diar_engine.py settings.py segmentation.py audio_io.py timing.py ./
 COPY static ./static
+COPY samples/earnest.flac samples/README.md ./samples/
 USER app
 
 EXPOSE 7860

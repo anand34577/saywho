@@ -1,6 +1,6 @@
 """Benchmark the NPU with every core mask the SoC supports (run inside the container on the board).
 
-    python bench.py [AUDIO]        default: samples/long.wav (not in the Docker image: pass a file there)
+    python bench.py [AUDIO]        default: samples/earnest.flac (74 s); pass a longer file for steadier numbers
 
 Each mask runs in its own process so the NPU context is released between runs.
 Watch the per-core load on the host meanwhile:  sudo watch -n0.5 cat /sys/kernel/debug/rknpu/load
@@ -27,13 +27,12 @@ def run_one(audio):
 
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
-    audio = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "samples", "long.wav")
+    audio = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "samples", "earnest.flac")
     if os.environ.get("_BENCH_CHILD"):
         run_one(audio)
         sys.exit(0)
     if not os.path.isfile(audio):
-        sys.exit(f"{audio}: not found (the Docker image has no samples/; pass a file, e.g. one copied in with "
-                 "docker cp)")
+        sys.exit(f"{audio}: not found (copy a file into the container with docker cp, then pass its path)")
     platform = detect_rk_platform()
     if platform not in RK_PLATFORMS:
         sys.exit("No Rockchip SoC detected (set RK_PLATFORM=rk3566|rk3576|rk3588)")

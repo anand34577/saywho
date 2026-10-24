@@ -1,0 +1,41 @@
+name: Something doesn't work
+description: Report a bug or a problem installing or running saywho
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The [Troubleshooting](https://github.com/anand34577/saywho/wiki/Troubleshooting) page covers the most common problems, so it's worth a look first.
+        Please don't attach recordings of real people unless everyone in them has agreed. `samples/earnest.flac` is fine to use.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run saywho?
+      options:
+        - Docker, cpu image
+        - Docker, cuda image
+        - Docker, rknn image
+        - install.bat / run.bat (Windows)
+        - install.sh / run.sh (Linux or macOS)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: info
+    attributes:
+      label: Output of /api/v1/info
+      description: Open http://localhost:7860/api/v1/info in your browser and paste what it shows. It tells us the version, the hardware in use and why any fallback happened.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: "Docker: `docker logs saywho`. Native: the text in the window where saywho runs."
+      render: text

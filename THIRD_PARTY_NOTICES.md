@@ -28,6 +28,12 @@ This file describes licenses for convenience. It is not legal advice; the licens
 - **Disclaimer:** the model comes "AS IS", without warranty, and you are responsible for any third-party rights and
   consents your use requires (OpenMDW-1.1, final paragraphs).
 
+## Sample recording: `samples/earnest.flac`
+
+A 74-second excerpt of the LibriVox dramatic reading of *The Importance of Being Earnest* by Oscar Wilde
+(https://archive.org/details/importanceofbeingearnest_1205_librivox), marked with the Public Domain Mark 1.0. It is
+in this repository and in every Docker image. Details: `samples/README.md`.
+
 ## Rockchip RKNN runtime (`rknn` image and Rockchip native installs only)
 
 - **Components:** `librknnrt.so` 2.3.2 and the `rknn-toolkit-lite2` 2.3.2 Python package, from
@@ -75,4 +81,5 @@ https://github.com/imageio/imageio-ffmpeg.
 ## Trademarks
 
 NVIDIA, Nemotron and CUDA are trademarks of NVIDIA Corporation. Rockchip and RKNN are trademarks of Rockchip
-Electronics Co., Ltd. This project is independent and is not affiliated with or endorsed by NVIDIA or Rockchip.
+Electronics Co., Ltd. saywho is an independent project and is not affiliated with or endorsed by NVIDIA or Rockchip. The model's name
+is used only to say which model saywho runs.

@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nemotron Diarization Studio</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>saywho · who spoke when</title>
+<meta name="description" content="Upload a recording and see who spoke when.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c5cff'/%3E%3Cpath d='M7 9.5a2.5 2.5 0 0 1 2.5-2.5h8A2.5 2.5 0 0 1 20 9.5v4a2.5 2.5 0 0 1-2.5 2.5H12l-3.2 2.6V16H9.5A2.5 2.5 0 0 1 7 13.5z' fill='%23fff'/%3E%3Cpath d='M14 19.5V18h4.5a3.5 3.5 0 0 0 3.5-3.5V12h.5a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5h-.3v2.6L19 21h-2.5a2.5 2.5 0 0 1-2.5-1.5z' fill='%23fff' opacity='.7'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#0d1014; --panel:#151a20; --panel2:#1b2129; --line:#262e38; --text:#e6ebf0; --muted:#8a96a3;
-  --accent:#76b900; --accent-ink:#0d1014; --danger:#ff6b6b;
-  --s0:#76b900; --s1:#4cc3ff; --s2:#ff9f43; --s3:#d67bff; --s4:#ff5d8f; --s5:#ffd43b; --s6:#2ee6b6; --s7:#a0a8ff;
+  --accent:#7c5cff; --accent-ink:#ffffff; --accent-soft:#1d1934; --danger:#ff6b6b;
+  --s0:#9d8bff; --s1:#4cc3ff; --s2:#ff9f43; --s3:#d67bff; --s4:#ff5d8f; --s5:#ffd43b; --s6:#2ee6b6; --s7:#a0a8ff;
   --radius:12px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif}
-.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mono{font-family:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace}
 header{display:flex;align-items:center;gap:12px;padding:18px 28px;border-bottom:1px solid var(--line)}
-header .logo{width:28px;height:28px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-weight:700}
-header h1{font-size:16px;margin:0;font-weight:600}
+header .logo{display:block;line-height:0}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
 header .sub{color:var(--muted);font-size:13px}
 header .dev{margin-left:auto;font-size:12px;color:var(--muted)}
 main{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
@@ -27,13 +27,16 @@ main{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
 
 /* upload */
 #drop{border:1.5px dashed #34404d;border-radius:var(--radius);padding:44px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--panel)}
-#drop:hover,#drop.over{border-color:var(--accent);background:#161d14}
+#drop:hover,#drop.over{border-color:var(--accent);background:var(--accent-soft)}
 #drop .big{font-size:17px;font-weight:600;margin-bottom:6px}
 #drop .hint{color:var(--muted)}
 .controls{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
 .controls label{display:flex;align-items:center;gap:8px}
 select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit}
-button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font:600 13px Inter,sans-serif;cursor:pointer}
+button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font:600 13px Inter,system-ui,sans-serif;cursor:pointer}
+header a{color:var(--muted);text-decoration:none}
+header a:hover{color:var(--text)}
+.start{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:13px}
 button.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
 button:disabled{opacity:.5;cursor:default}
 
@@ -45,7 +48,7 @@ button:disabled{opacity:.5;cursor:default}
 
 #results{display:none;margin-top:24px}
 .grid{display:grid;gap:16px}
-.top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}
 @media (max-width:900px){.top{grid-template-columns:1fr}}
 
 /* media */
@@ -69,7 +72,7 @@ button:disabled{opacity:.5;cursor:default}
 .speakers{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
 .spk{background:var(--panel2);border-radius:10px;padding:14px;border-left:4px solid}
 .spk .name{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.spk .name input{background:transparent;border:0;border-bottom:1px dashed transparent;color:var(--text);font:600 15px Inter,sans-serif;width:100%;padding:2px 0}
+.spk .name input{background:transparent;border:0;border-bottom:1px dashed transparent;color:var(--text);font:600 15px Inter,system-ui,sans-serif;width:100%;padding:2px 0}
 .spk .name input:hover,.spk .name input:focus{border-bottom-color:var(--muted);outline:none}
 .spk .share{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 10px}
 .spk .share div{height:100%}
@@ -84,23 +87,33 @@ th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line)}
 th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:500}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:var(--panel2)}
-tbody tr.active{background:#1d2a14}
+tbody tr.active{background:var(--accent-soft)}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap}
 .two{grid-template-columns:1fr 1fr}
 @media (max-width:900px){.two{grid-template-columns:1fr}}
 canvas.chart{width:100%;display:block}
 .note{color:var(--muted);font-size:12px;margin-top:8px}
+@media (max-width:640px){
+  header{flex-wrap:wrap;padding:14px 16px;gap:8px 12px}
+  header .dev{margin-left:0!important;font-size:11.5px}
+  header #devinfo{order:5;flex-basis:100%}
+  main{padding:16px 16px 48px}
+  #drop{padding:28px 16px}
+  .start span[style]{margin-left:0!important}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">N</div>
+  <div class="logo"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6cff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)"/><path d="M7 9.5a2.5 2.5 0 0 1 2.5-2.5h8A2.5 2.5 0 0 1 20 9.5v4a2.5 2.5 0 0 1-2.5 2.5H12l-3.2 2.6V16H9.5A2.5 2.5 0 0 1 7 13.5z" fill="#fff"/><path d="M14 19.5V18h4.5a3.5 3.5 0 0 0 3.5-3.5V12h.5a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5h-.3v2.6L19 21h-2.5a2.5 2.5 0 0 1-2.5-1.5z" fill="#fff" opacity=".7"/></svg></div>
   <div>
-    <h1>Nemotron Diarization Studio</h1>
-    <div class="sub">Who spoke when · nvidia/Nemotron-3-Diarization</div>
+    <h1>saywho</h1>
+    <div class="sub">Who spoke when, in any recording</div>
   </div>
   <div class="dev mono" id="devinfo">…</div>
-  <a class="dev" href="/docs" target="_blank" style="margin-left:14px;color:var(--muted)">API docs ↗</a>
+  <a class="dev" href="https://github.com/anand34577/saywho/wiki" target="_blank" rel="noopener" style="margin-left:14px">Help ↗</a>
+  <a class="dev" href="/docs" target="_blank" style="margin-left:14px">API docs ↗</a>
 </header>
 
 <main>
@@ -108,6 +121,11 @@ canvas.chart{width:100%;display:block}
     <div class="big">Drop a video or audio file here</div>
     <div class="hint">or click to browse · mp4, mkv, mov, webm, wav, mp3, m4a, flac, ogg …</div>
     <input type="file" id="file" accept="audio/*,video/*" hidden>
+  </div>
+  <div class="start">
+    <button class="ghost" id="sample">Try the sample</button>
+    <span>No recording at hand? A 74-second public-domain scene with three voices.</span>
+    <span style="margin-left:auto">Files are processed on this server and deleted right after.</span>
   </div>
   <div class="controls">
     <label>Speech threshold
@@ -221,6 +239,17 @@ drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => {e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) run(e.dataTransfer.files[0])};
 fileIn.onchange = () => fileIn.files[0] && run(fileIn.files[0]);
 
+// ---------- bundled sample (also opened by /#sample) ----------
+function runSample(){
+  $('#status').style.display='block'; $('#status .bar').style.display='block';
+  $('#statustext').textContent='Fetching the sample recording…';
+  fetch('/sample').then(r=>{ if(!r.ok) throw new Error('This install has no sample recording.'); return r.blob(); })
+    .then(b=>run(new File([b],'earnest.flac',{type:'audio/flac'})))
+    .catch(e=>{ $('#statustext').innerHTML=`<span class="err">${esc(e.message)}</span>`; $('#status .bar').style.display='none'; });
+}
+$('#sample').onclick = runSample;
+if (location.hash==='#sample') runSample();
+
 function run(file){
   $('#results').style.display='none';
   $('#status').style.display='block';
@@ -232,7 +261,7 @@ function run(file){
   xhr.upload.onprogress = e => {
     if (e.lengthComputable) {
       const p = Math.round(e.loaded/e.total*100);
-      $('#statustext').textContent = p<100 ? `Uploading… ${p}%` : 'Extracting audio and running Nemotron-3-Diarization…';
+      $('#statustext').textContent = p<100 ? `Uploading… ${p}%` : 'Listening and working out who spoke when…';
     }
   };
   xhr.onload = () => {
@@ -249,7 +278,7 @@ function run(file){
     recompute();
     $('#results').style.display='block';
   };
-  xhr.onerror = () => $('#statustext').innerHTML = '<span class="err">Network error</span>';
+  xhr.onerror = () => { $('#statustext').innerHTML = '<span class="err">Could not reach the server. Is it still running?</span>'; $('#status .bar').style.display='none'; };
   $('#status .bar').style.display='block';
   xhr.send(fd);
 }
@@ -406,7 +435,7 @@ function renderMatrix(){
   if (D.N<2){ $('#matrix').innerHTML='<div class="note">Only one speaker detected.</div>'; return; }
   const max = Math.max(1,...D.trans.flat());
   let h='<div class="tablewrap" style="max-height:none"><table><thead><tr><th></th>'+D.spk.map(p=>`<th><span class="dot" style="display:inline-block;background:${color(p.i)}"></span> ${esc(name(p.i))}</th>`).join('')+'</tr></thead><tbody>';
-  D.trans.forEach((row,a)=>{ h+=`<tr style="cursor:default"><th style="position:static"><span class="dot" style="display:inline-block;background:${color(a)}"></span> ${esc(name(a))}</th>`+row.map((v,b)=>`<td class="mono" style="background:rgba(118,185,0,${a===b?0:(v/max*0.55).toFixed(2)})">${a===b?'·':v}</td>`).join('')+'</tr>'; });
+  D.trans.forEach((row,a)=>{ h+=`<tr style="cursor:default"><th style="position:static"><span class="dot" style="display:inline-block;background:${color(a)}"></span> ${esc(name(a))}</th>`+row.map((v,b)=>`<td class="mono" style="background:rgba(124,92,255,${a===b?0:(v/max*0.6).toFixed(2)})">${a===b?'·':v}</td>`).join('')+'</tr>'; });
   $('#matrix').innerHTML = h+'</tbody></table></div>';
 }
 
@@ -421,7 +450,7 @@ function drawTimeline(){
   const cv=$('#timeline'); const H = Math.max(1,D.N)*LANE + 26;
   const {ctx,w,h}=setupCanvas(cv,H);
   const span=view.end-view.start, X=t=>LABELW+(t-view.start)/span*(w-LABELW);
-  ctx.font='12px Inter'; ctx.textBaseline='middle';
+  ctx.font='12px Inter, system-ui, sans-serif'; ctx.textBaseline='middle';
   // grid
   const step = niceStep(span/8);
   ctx.strokeStyle='#222a33'; ctx.fillStyle='#6c7783';
@@ -465,7 +494,7 @@ function drawProbs(){
 
 function drawShare(){
   const cv=$('#share'); const {ctx,w,h}=setupCanvas(cv,Math.max(60,D.N*34+10));
-  const max=Math.max(...D.spk.map(p=>p.total),1e-6); ctx.font='12.5px Inter'; ctx.textBaseline='middle';
+  const max=Math.max(...D.spk.map(p=>p.total),1e-6); ctx.font='12.5px Inter, system-ui, sans-serif'; ctx.textBaseline='middle';
   D.spk.forEach(p=>{
     const y=p.i*34+6, bw=(w-230)*p.total/max;
     ctx.fillStyle='#c9d1d9'; ctx.fillText(name(p.i).slice(0,16),0,y+12);

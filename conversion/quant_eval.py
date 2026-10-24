@@ -2,7 +2,9 @@
 
     python conversion/quant_eval.py [--quant int8|fp16] [--platform rk3566] [--export path.rknn]
 
-Every sample in samples/ with a matching *_ref.npy is run through the full pipeline (speaker cache included).
+Every recording in samples/ with a matching <name>_ref.npy is run through the full pipeline (speaker cache
+included). Make a reference on a GPU or CPU first:
+    python conversion/validate.py samples/x.wav --backend onnx --save-reference samples/x_ref.npy
 The simulator cannot load an exported .rknn, so the model is built here exactly as convert_rknn.py builds it.
 """
 import argparse
@@ -51,7 +53,8 @@ def main():
     eng = DiarizationEngine("onnx", onnx_path=args.onnx)
     eng.model.model.run = lambda x, valid: rknn.inference(inputs=[x, valid])[0]
     for ref_path in sorted(glob.glob(os.path.join(ROOT, "samples", "*_ref.npy"))):
-        wav = ref_path.replace("_ref.npy", ".wav")
+        stem = ref_path[: -len("_ref.npy")]
+        wav = next((stem + ext for ext in (".wav", ".flac", ".mp3", ".m4a") if os.path.exists(stem + ext)), stem + ".wav")
         ref = np.load(ref_path)
         got, _ = eng.probabilities(load(wav))
         diff = np.abs(got - ref)

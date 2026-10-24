@@ -7,7 +7,9 @@ dist
 tests
 docs
 examples
-samples
+samples/*
+!samples/earnest.flac
+!samples/README.md
 **/__pycache__
 conversion/*.onnx
 conversion/*.npy

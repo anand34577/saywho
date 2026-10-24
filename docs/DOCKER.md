@@ -4,9 +4,9 @@ Prebuilt images are published to the GitHub Container Registry. No login, no clo
 
 | Image | Platforms | Hardware | Notes |
 |---|---|---|---|
-| `ghcr.io/anand34577/nemotron-diarization:cpu` | linux/amd64, linux/arm64 | any CPU | also tagged `latest` |
-| `ghcr.io/anand34577/nemotron-diarization:cuda` | linux/amd64, linux/arm64 | NVIDIA GPU, CUDA 12.9: amd64 from compute capability 7.0 (Volta, Turing, Ampere, Ada, Hopper, Blackwell); arm64 from 8.0 (A100, GH200, Blackwell) | falls back to the CPU if no GPU is visible |
-| `ghcr.io/anand34577/nemotron-diarization:rknn` | linux/arm64 | Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | runtime downloaded from Rockchip on first start, see [Rockchip](#rockchip-npu-rknn) |
+| `ghcr.io/anand34577/saywho:cpu` | linux/amd64, linux/arm64 | any CPU | also tagged `latest` |
+| `ghcr.io/anand34577/saywho:cuda` | linux/amd64, linux/arm64 | NVIDIA GPU, CUDA 12.9: amd64 from compute capability 7.0 (Volta, Turing, Ampere, Ada, Hopper, Blackwell); arm64 from 8.0 (A100, GH200, Blackwell) | falls back to the CPU if no GPU is visible |
+| `ghcr.io/anand34577/saywho:rknn` | linux/arm64 | Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | runtime downloaded from Rockchip on first start, see [Rockchip](#rockchip-npu-rknn) |
 
 Every image contains the model (`nvidia/Nemotron-3-Diarization`), so containers start offline. Each image also
 serves the web UI at `/` and the REST API at `/api/v1` ([API.md](API.md)) on port **7860**.
@@ -22,15 +22,15 @@ Docker selects the right architecture automatically.
 ### CPU (any machine)
 
 ```bash
-docker run -d --name nemotron-diarization -p 7860:7860 --restart unless-stopped \
-  ghcr.io/anand34577/nemotron-diarization:cpu
+docker run -d --name saywho -p 7860:7860 --restart unless-stopped \
+  ghcr.io/anand34577/saywho:cpu
 ```
 
 Open http://localhost:7860, or test the API:
 
 ```bash
 curl http://localhost:7860/api/v1/ready
-curl -F file=@meeting.mp4 http://localhost:7860/api/v1/diarize
+curl -F file=@meeting.mp4 http://localhost:7860/api/v1/diarize      # any audio or video file of yours
 ```
 
 ### NVIDIA GPU (`cuda`)
@@ -42,8 +42,8 @@ Requirements on the host:
    only needs the Windows NVIDIA driver.
 
 ```bash
-docker run -d --name nemotron-diarization --gpus all -p 7860:7860 --restart unless-stopped \
-  ghcr.io/anand34577/nemotron-diarization:cuda
+docker run -d --name saywho --gpus all -p 7860:7860 --restart unless-stopped \
+  ghcr.io/anand34577/saywho:cuda
 ```
 
 `curl localhost:7860/api/v1/info` should show `"backend": "cuda"`. If it shows `cpu`, `fallbacks` says why. The usual
@@ -63,9 +63,9 @@ there.
 On the board (arm64, Armbian/Debian with the vendor kernel; see [Rockchip](#rockchip-npu-rknn)):
 
 ```bash
-docker run -d --name nemotron-diarization --privileged -p 7860:7860 --restart unless-stopped \
+docker run -d --name saywho --privileged -p 7860:7860 --restart unless-stopped \
   -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn \
-  ghcr.io/anand34577/nemotron-diarization:rknn
+  ghcr.io/anand34577/saywho:rknn
 ```
 
 `RKNN_ACCEPT_LICENSE=yes` means you accept Rockchip's license for the NPU runtime (explained below).
@@ -77,13 +77,10 @@ docker run -d --name nemotron-diarization --privileged -p 7860:7860 --restart un
 Download the compose file and the settings template. A clone is not needed:
 
 ```bash
-mkdir nemotron-diarization && cd nemotron-diarization
-curl -fsSLO https://raw.githubusercontent.com/anand34577/nemotron-diarization/main/docker-compose.yml
-curl -fsSL  https://raw.githubusercontent.com/anand34577/nemotron-diarization/main/.env.example -o .env
+mkdir saywho && cd saywho
+curl -fsSLO https://raw.githubusercontent.com/anand34577/saywho/main/docker-compose.yml
+curl -fsSL  https://raw.githubusercontent.com/anand34577/saywho/main/.env.example -o .env
 ```
-
-(While the repository is private, these two URLs need GitHub access. You can copy the two files from someone who
-has it.)
 
 Edit `.env`: set `COMPOSE_PROFILES` to `cpu`, `cuda` or `rknn`, plus any settings from the table below. Then:
 
@@ -186,7 +183,7 @@ CPU. The log and `/api/v1/info` → `fallbacks` explain why.
 
 ```bash
 curl localhost:7860/api/v1/info
-# "backend": "rknn", "accelerator": "RK3576 NPU (2 cores, mask=0_1)"
+# "backend": "rknn", "accelerator": "RK3576 NPU (2 cores, mask=all, fp16)"
 ```
 
 Every result has a `timings` block (also logged) showing time spent on the NPU against time on the CPU.
@@ -222,7 +219,7 @@ Pulling and running an image means using software under several licenses. Your u
 - Debian, FFmpeg, PyTorch and the Python packages: open-source licenses.
 
 Each image contains the license texts and full package inventories in `/licenses`
-(`docker run --rm ghcr.io/anand34577/nemotron-diarization:cpu ls /licenses`). Details:
+(`docker run --rm ghcr.io/anand34577/saywho:cpu ls /licenses`). Details:
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 ---
@@ -232,12 +229,12 @@ Each image contains the license texts and full package inventories in `/licenses
 | Symptom | Fix |
 |---|---|
 | `docker compose up` says "no service selected" | Set `COMPOSE_PROFILES=cpu` (or `cuda`/`rknn`) in `.env`, or add `--profile cpu` |
-| `pull access denied` / `denied` from ghcr.io | Check the image name and tag. While the package is private, run `docker login ghcr.io` with a token that has `read:packages` |
+| `pull access denied` / `denied` from ghcr.io | Check the image name and tag, for example `ghcr.io/anand34577/saywho:cpu`. No login is needed |
 | `cuda` image runs on the CPU | Add `--gpus all` (compose already reserves the GPUs), install the NVIDIA Container Toolkit, and check `/api/v1/info` → `fallbacks` |
 | `could not select device driver "nvidia"` | The NVIDIA Container Toolkit is missing on the host |
 | `cuda` fails with "no kernel image is available" | The GPU is older than the image supports. Check with `nvidia-smi --query-gpu=compute_cap --format=csv`; below 7.0 (amd64) or 8.0 (arm64), use the `cpu` image, or a native install with an older PyTorch build |
 | `rknn` runs on the CPU | `fallbacks` gives the reason: no `RKNN_ACCEPT_LICENSE=yes`, no `--privileged`, a mainline kernel without `rknpu`, or no internet on first start |
 | `exec format error` | Wrong architecture: `rknn` is arm64 only. `cpu` and `cuda` are multi-arch |
-| Container `unhealthy` | `docker logs nemotron-diarization`; the model failed to load or the port is taken |
+| Container `unhealthy` | `docker logs saywho`; the model failed to load or the port is taken |
 | HTTP 413 on upload | Raise `MAX_UPLOAD_MB`, and the reverse proxy's body size limit |
 | Slow on long files behind a proxy | Use the asynchronous `/api/v1/jobs` API, or raise the proxy read timeout |

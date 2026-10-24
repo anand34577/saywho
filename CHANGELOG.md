@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.3.0 - 2026-10-24
+
+The project is now open source under the name **saywho**, at https://github.com/anand34577/saywho.
+
+### Added
+- A **Try the sample** button in the web app, with a 74-second public-domain recording (three voices, from a
+  LibriVox reading of *The Importance of Being Earnest*). The installers' self-check and `bench.py` use it too, and
+  it is included in every Docker image.
+- A wiki with step-by-step guides for Windows, macOS, Linux, Docker and Rockchip boards, plus pages on reading the
+  results, settings, using saywho from other devices, updating and troubleshooting. It is kept in `docs/wiki` and
+  published automatically.
+- A Help link in the web app, `CONTRIBUTING.md`, `SECURITY.md` and issue templates.
+
+### Changed
+- New name and look: the web app, API title, Docker images (`ghcr.io/anand34577/saywho:cpu`, `:cuda`, `:rknn`) and
+  compose container are now called saywho. Settings, the API and its URLs are unchanged.
+- The web app no longer loads fonts from Google, so it makes no outside requests and looks the same offline. It
+  also fits phone screens better.
+- `scripts/download_models.py` downloads the NPU models over plain HTTPS; no GitHub login is needed any more.
+- The Docker smoke test in CI now diarizes the sample recording and fails if fewer than two speakers are found.
+- The speed figures in the docs were re-measured on the new sample: about 130x real time on a GTX 1650 and about
+  35x on a 6-core Ryzen 5 laptop CPU.
+
+### Removed
+- The old test recordings and their reference files.
+
 ## 2.2.1 - 2026-10-24
 
 ### Fixed

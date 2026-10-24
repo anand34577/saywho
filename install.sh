@@ -17,7 +17,7 @@ TORCH_CUDA="${TORCH_CUDA:-cu126}"
 say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
-command -v "$PY" >/dev/null || die "$PY not found. Install Python 3.10-3.12 (e.g. sudo apt install python3 python3-venv)."
+command -v "$PY" >/dev/null || die "$PY not found. Install Python 3.10-3.13 (e.g. sudo apt install python3 python3-venv)."
 "$PY" -c 'import sys; sys.exit(not ((3, 10) <= sys.version_info[:2] <= (3, 13)))' \
   || die "Python 3.10-3.13 required, found $("$PY" --version 2>&1). Set PYTHON=python3.11 (or similar)."
 

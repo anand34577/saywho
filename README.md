@@ -1,160 +1,135 @@
-# Nemotron Diarization: who spoke when, on any hardware
+<p align="center"><img src="docs/images/banner.svg" alt="saywho" width="720"></p>
 
-Speaker diarization with `nvidia/Nemotron-3-Diarization`, served as a **REST API** with a **web UI**. Upload a video or
-audio file and get speaker segments, per-speaker statistics, overlaps and turn-taking, plus RTTM/CSV/SRT/JSON exports.
+<p align="center">
+  <b>Who spoke when, in any recording.</b><br>
+  Drop in a meeting, interview or podcast and get each speaker's turns, talk time and subtitles.<br>
+  Runs on your own machine: an NVIDIA GPU, a Rockchip NPU board, a Mac or any plain CPU.
+</p>
 
-It runs on whatever hardware is available and picks the fastest option automatically:
+<p align="center">
+  <a href="https://github.com/anand34577/saywho/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/anand34577/saywho/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/anand34577/saywho/actions/workflows/docker.yml"><img alt="Docker" src="https://github.com/anand34577/saywho/actions/workflows/docker.yml/badge.svg"></a>
+  <a href="https://github.com/anand34577/saywho/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/anand34577/saywho"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+</p>
 
-| Hardware | Backend | Notes |
-|---|---|---|
-| Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | `rknn` | converted models in `rknn_models/`: FP16 (experimental INT8 too) |
-| NVIDIA GPU | `cuda` | any CUDA GPU (tested on a 4 GB GTX 1650) |
-| Apple Silicon GPU | `mps` | macOS |
-| Any CPU (x86_64, arm64) | `cpu` | ~60x real time on a 6-core laptop CPU |
+<p align="center"><img src="docs/images/screenshot.png" alt="saywho showing three speakers found in a sample recording" width="100%"></p>
 
-If the preferred hardware fails at startup (no driver, wrong kernel, broken CUDA), the server logs why and **falls
-back to the CPU** instead of failing. CPU output matches the GPU reference exactly.
+---
 
-## Quick start with Docker (prebuilt images)
+saywho does **speaker diarization**: it listens to a recording and works out where each person is talking. It
+doesn't transcribe the words or identify who people are. It labels them Speaker 1, Speaker 2 and so on, in the order
+they first speak, and you can rename them in the app.
+
+- **Any audio or video file**: mp4, mkv, mov, webm, wav, mp3, m4a, flac, ogg and anything else FFmpeg reads.
+- **A clear picture of the conversation**: a timeline you can click to jump around, talk time per person, overlaps,
+  interruptions, and who tends to answer whom.
+- **Exports**: subtitles (SRT), spreadsheet (CSV), RTTM for research tools, and JSON.
+- **A REST API** for your own apps, with a queue for long files and interactive docs at `/docs`.
+- **Private by design**: everything runs on your machine. Uploads are deleted as soon as they are processed, and
+  nothing is sent anywhere.
+- **Uses the hardware you have**, picking the fastest option on its own and falling back to the CPU if a driver is
+  missing.
+
+| Hardware | Speed on a 74-second recording |
+|---|---|
+| NVIDIA GPU (tested on a 4 GB GTX 1650) | about 130x real time: an hour of audio in about 30 seconds |
+| Any 64-bit CPU (tested on a 6-core Ryzen 5 laptop) | about 35x real time: an hour of audio in under 2 minutes |
+| Rockchip RK3566 / RK3568 / RK3576 / RK3588 NPU | runs on the NPU, with the CPU free for other work |
+| Apple Silicon Mac | uses the Mac's GPU |
+
+Under the hood saywho runs [Nemotron-3-Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization), an open
+model from NVIDIA that handles up to 8 speakers.
+
+## Get started
+
+**Step-by-step guides for every system are in the [wiki](https://github.com/anand34577/saywho/wiki)**, written so
+that you don't need to be a developer to follow them.
+
+The quickest way is Docker. Pick the line that matches your machine:
 
 ```bash
-# any machine (x86_64 or arm64)
-docker run -d --name nemotron-diarization -p 7860:7860 ghcr.io/anand34577/nemotron-diarization:cpu
+# Any computer (Windows, Mac, Linux; Intel, AMD or ARM)
+docker run -d --name saywho -p 7860:7860 --restart unless-stopped ghcr.io/anand34577/saywho:cpu
 
-# NVIDIA GPU (needs the NVIDIA Container Toolkit)
-docker run -d --name nemotron-diarization -p 7860:7860 --gpus all ghcr.io/anand34577/nemotron-diarization:cuda
+# Computer with an NVIDIA graphics card (needs the NVIDIA Container Toolkit)
+docker run -d --name saywho -p 7860:7860 --restart unless-stopped --gpus all ghcr.io/anand34577/saywho:cuda
 
-# Rockchip RK3566/68/76/88 board; RKNN_ACCEPT_LICENSE=yes accepts Rockchip's runtime license (see docs/DOCKER.md)
-docker run -d --name nemotron-diarization -p 7860:7860 --privileged \
-  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/nemotron-diarization:rknn
+# Rockchip RK3566/68/76/88 board. RKNN_ACCEPT_LICENSE=yes accepts Rockchip's license for its NPU runtime
+docker run -d --name saywho -p 7860:7860 --restart unless-stopped --privileged \
+  -e RKNN_ACCEPT_LICENSE=yes -v rknn-runtime:/opt/rknn ghcr.io/anand34577/saywho:rknn
 ```
 
-Then open **http://localhost:7860** for the UI, or **http://localhost:7860/docs** for the interactive API docs.
-**[docs/DOCKER.md](docs/DOCKER.md)** covers compose, every environment variable, GPU and NPU host setup, and
-troubleshooting.
+Then open **<http://localhost:7860>** and click **Try the sample**, or drop in a file of your own. The first start
+takes up to a minute while the model loads.
 
-## Quick start without Docker
+Prefer not to use Docker? Download the code (the green **Code** button, then **Download ZIP**), unpack it, and run
+the installer. It sets up Python packages, picks the right build for your graphics card and checks that everything
+works.
 
-```bash
-git clone https://github.com/anand34577/nemotron-diarization.git
-cd nemotron-diarization
-```
-
-| OS | Install | Start |
+| System | Install | Start |
 |---|---|---|
-| Windows (Python 3.10-3.13 from python.org) | `install.bat` | `run.bat` |
-| Linux / macOS | `./install.sh` | `./run.sh` |
+| Windows 10/11 with [Python 3.10-3.13](https://www.python.org/downloads/) | double-click `install.bat` | double-click `run.bat` |
+| Linux or macOS | `./install.sh` | `./run.sh` |
 | Rockchip board | `./install.sh rknn` | `./run.sh` |
 
-The installers detect your hardware, install the matching PyTorch build, download the model and run a self-check.
-On a Rockchip board, `./install.sh rknn` also downloads the NPU model and, once you accept Rockchip's license, the NPU
-runtime. All configuration lives in `.env` (see `.env.example`); nothing needs to be set for a local run. Details:
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## API
+## Use it from your own code
 
 ```bash
-curl -F file=@meeting.mp4 http://127.0.0.1:7860/api/v1/diarize                         # JSON
-curl -F file=@meeting.mp4 -F format=rttm -o meeting.rttm http://127.0.0.1:7860/api/v1/diarize
+curl -F file=@meeting.mp4 http://localhost:7860/api/v1/diarize                          # JSON result
+curl -F file=@meeting.mp4 -F format=srt -o meeting.srt http://localhost:7860/api/v1/diarize   # subtitles
 ```
 
 ```json
 {
-  "duration": 51.9, "num_speakers": 3, "accelerator": "NVIDIA GeForce GTX 1650 (CUDA)", "real_time_factor": 109.6,
-  "speakers": [{"label": "Speaker 1", "talk_time": 13.7, "share_of_speech": 0.384, "segments": 7, ...}],
-  "segments": [{"speaker": "Speaker 1", "start": 0.07, "end": 1.32, "duration": 1.25, "overlaps_with": []}, ...],
-  "summary": {"speech_time": 35.7, "overlap_time": 0.0, "speaker_turns": 7, "interruptions": 0, ...},
-  "transitions": {...}
+  "duration": 73.6, "num_speakers": 3, "accelerator": "NVIDIA GeForce GTX 1650 (CUDA)",
+  "speakers": [{"label": "Speaker 1", "talk_time": 23.8, "share_of_speech": 0.393, "segments": 9}],
+  "segments": [{"speaker": "Speaker 1", "start": 0.3, "end": 4.0, "duration": 3.71, "overlaps_with": []}],
+  "summary": {"speech_time": 60.6, "overlap_time": 0.0, "speaker_turns": 18, "interruptions": 0}
 }
 ```
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /api/v1/diarize` | Upload and wait; JSON or an `rttm`/`csv`/`srt` file |
-| `POST /api/v1/jobs`, `GET /api/v1/jobs/{id}`, `GET /api/v1/jobs/{id}/result` | Async jobs for long files |
-| `GET /api/v1/health`, `/ready`, `/info` | Liveness, readiness, backend and limits |
-
-Parameters: `threshold`, `min_segment`, `merge_gap`, `include_probabilities`, `format`. Optional API key auth
-(`API_KEY`), CORS, and upload/duration limits. **Full reference: [docs/API.md](docs/API.md)**. Python client:
-[examples/client.py](examples/client.py).
+Long files can go through the job queue (`POST /api/v1/jobs`, then poll). You can protect the API with a key, allow
+other websites to call it, and limit upload sizes. Everything is in the [API reference](docs/API.md), and there is
+a ready-made [Python client](examples/client.py).
 
 ## Documentation
 
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: every install method (Windows, Linux, macOS, Docker CPU/GPU/NPU,
-  Rockchip boards), configuration, systemd, nginx/HTTPS, health checks, offline installs, troubleshooting
-- **[docs/DOCKER.md](docs/DOCKER.md)**: prebuilt images (`cpu`, `cuda`, `rknn`), `docker run` and compose, every
-  environment variable, licenses inside the images
-- **[docs/API.md](docs/API.md)**: endpoints, parameters, response fields, errors, curl/Python/JavaScript examples
-- **[.env.example](.env.example)**: every setting with its default
-
-## How it works
-
-- Audio is decoded to 16 kHz mono by ffmpeg (a system install, or the bundled `imageio-ffmpeg` binary). The model
-  outputs per-speaker activity probabilities every 10 ms. Segments are derived by thresholding, gap merging and
-  minimum-length filtering, with the same rules on the server (API) and in the browser (UI, where the sliders
-  re-segment instantly).
-- On the NPU, the heavy part (31-layer transformer encoder + classifier, 99M params) is exported as one fixed-shape
-  graph (684 encoder frames = speaker cache 264 + FIFO 40 + chunk 340 + look-ahead 40), padded and masked, and
-  compiled to FP16 RKNN, and to an experimental hybrid INT8 RKNN (attention scores stay FP16; not accurate enough yet on real recordings). Feature extraction, feature stacking and the Arrival-Order Speaker Cache stay the original
-  transformers code on the CPU, so results match the GPU.
-- RKNN validation (x86 simulator, FP16, full pipeline): identical segments to the GPU on the 52 s sample for
-  rk3566/rk3576/rk3588; on the 186 s sample 72/72 segments match, and 0.02 % of 10 ms frames differ at a boundary.
-
-## Files
-
-| Path | What |
+| I want to... | Read |
 |---|---|
-| `app.py` | API server + UI host (`python app.py`, `python app.py --check`) |
-| `diar_engine.py` | model loading, backends, auto-detection and fallback, Rockchip SoC/core detection |
-| `segmentation.py` | probabilities → segments, statistics, RTTM/CSV/SRT/JSON |
-| `audio_io.py` | decoding any audio/video file |
-| `timing.py` | per-stage timing breakdown (`timings` in results and logs) |
-| `settings.py`, `.env.example` | configuration |
-| `static/index.html` | web UI |
-| `install.sh`, `install.ps1`/`install.bat`, `run.sh`, `run.bat` | native install and start |
-| `Dockerfile` (CPU/CUDA), `Dockerfile.rknn` (NPU), `docker-compose.yml`, `.github/workflows/docker.yml` | images and their release build |
-| `rknn_models/SHA256SUMS`, `scripts/download_models.py` | converted NPU models (release assets) and their downloader |
-| `scripts/fetch_rknn_runtime.py`, `docker/rknn-entrypoint.sh`, `requirements-rknn.txt` | Rockchip runtime 2.3.2, downloaded from Rockchip after license acceptance |
-| `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, `licenses/` | licenses and notices |
-| `conversion/` | ONNX export, RKNN conversion, end-to-end validation against the reference |
-| `bench.py`, `scripts/check_npu.sh` | NPU benchmark and driver check |
-| `tests/` | API and segmentation tests (`python -m unittest discover -s tests`) |
-| `samples/` | test recordings + GPU reference probabilities |
+| Install it, step by step | [Wiki: Getting started](https://github.com/anand34577/saywho/wiki) |
+| Understand the results | [Wiki: Reading the results](https://github.com/anand34577/saywho/wiki/Reading-the-results) |
+| Change a setting | [Wiki: Settings](https://github.com/anand34577/saywho/wiki/Settings) and [.env.example](.env.example) |
+| Fix a problem | [Wiki: Troubleshooting](https://github.com/anand34577/saywho/wiki/Troubleshooting) |
+| Run it with Docker or Compose | [docs/DOCKER.md](docs/DOCKER.md) |
+| Run it on a server, behind HTTPS, as a service | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Call the API | [docs/API.md](docs/API.md) |
+| Help develop it | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-## License and terms of use
+## Use recordings responsibly
 
-- **This project's code:** [Apache License 2.0](LICENSE). Copyright 2026 Anand. See [NOTICE](NOTICE).
-- **The model** `nvidia/Nemotron-3-Diarization` (NVIDIA), and the RKNN models converted from it:
-  [OpenMDW License 1.1](licenses/OpenMDW-1.1.txt). Commercial and non-commercial use are allowed; if you
-  redistribute the model, include that license.
-- **Rockchip NPU runtime:** Rockchip's proprietary
-  [RKNN SDK License](https://github.com/airockchip/rknn-toolkit2/blob/master/LICENSE). It is not distributed here;
-  you download it from Rockchip after accepting that license.
-- **Docker images:** they also contain Debian, FFmpeg, PyTorch, Python packages and, in the `cuda` image, NVIDIA
-  CUDA libraries, each under its own license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `/licenses`
+Recordings of people's voices are personal data in many countries (for example under the GDPR). Only process
+recordings you are allowed to process, get consent where the law asks for it, and follow the recording and privacy
+laws that apply to you. saywho labels speakers by order of appearance. It does not and should not be used to
+identify who a person is.
+
+Results can contain mistakes, especially with more than eight speakers (the model's limit), noisy audio or very
+short turns. Check them before you rely on them for decisions about people. The software and the model are provided
+"as is", without warranty of any kind.
+
+## License and credits
+
+- **saywho's code** is under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
+- **The model** [nvidia/Nemotron-3-Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization) by NVIDIA,
+  and the Rockchip versions converted from it, are under the [OpenMDW License 1.1](licenses/OpenMDW-1.1.txt).
+  Commercial and non-commercial use are both allowed. If you pass the model on, include that license.
+- **The Rockchip NPU runtime** is Rockchip's own software under its
+  [RKNN SDK License](https://github.com/airockchip/rknn-toolkit2/blob/master/LICENSE). saywho does not ship it; it
+  is downloaded from Rockchip only after you accept that license.
+- **The Docker images** also contain Debian, FFmpeg, PyTorch, Python packages and, in the `cuda` image, NVIDIA CUDA
+  libraries, each under its own license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `/licenses`
   inside each image.
+- **The sample recording** is a public-domain excerpt from LibriVox; see [samples/README.md](samples/README.md).
 
-**Responsible use.** Speaker diarization processes recordings of people's voices, which is personal data in many
-jurisdictions (for example under the GDPR). Only process recordings you are allowed to process: get consent where
-the law requires it, and follow the recording and data-protection laws that apply to you. The model labels
-speakers by order of appearance ("Speaker 1", "Speaker 2"); it does not identify who a person is, and should not be
-used to try. Results can contain errors (for example with recordings of more than eight speakers, the model's
-maximum, noisy audio or very short turns), so review them before relying on them for decisions about people. The software and the model are
-provided "as is", without warranty of any kind (Apache-2.0 sections 7-8; OpenMDW-1.1).
-
-NVIDIA, Nemotron and CUDA are trademarks of NVIDIA Corporation; Rockchip and RKNN are trademarks of Rockchip
-Electronics Co., Ltd. This project is independent and not endorsed by either company.
-
-## Re-converting the RKNN models
-
-```bash
-# Windows/Linux venv with torch + transformers
-python conversion/export_onnx.py
-# WSL / x86 Linux: venv with rknn-toolkit2==2.3.2, onnx==1.16.2, protobuf==4.25.4, numpy==1.26.4, torch>=2.7 (cpu),
-#      transformers==5.19.0, librosa==0.11.0, onnxruntime
-python conversion/convert_rknn.py --check
-# INT8: calibration set from real audio, then hybrid quantization, then end-to-end scoring in the simulator
-python conversion/calib_data.py samples/meeting.wav samples/long.wav
-python conversion/convert_rknn.py --quant int8
-python conversion/quant_eval.py --platform rk3566
-```
+NVIDIA, Nemotron and CUDA are trademarks of NVIDIA Corporation. Rockchip and RKNN are trademarks of Rockchip
+Electronics Co., Ltd. saywho is an independent project, not affiliated with or endorsed by either company.

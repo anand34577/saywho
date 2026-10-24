@@ -6,24 +6,20 @@
     python scripts/download_models.py --int8 ...   # the experimental int8 models instead of fp16
 
 The models are too large for git (fp16 221-253 MB, int8 ~150 MB each), so they are published as assets of the release
-MODELS_TAG (default rknn-models-v1). Download methods, tried in order:
-  1. the GitHub CLI (`gh`), if it is installed and logged in (works for private repositories)
-  2. HTTPS with GITHUB_TOKEN, if set (private repositories)
-  3. plain HTTPS (public repositories)
-Only the standard library is used, so this runs before anything else is installed.
+MODELS_TAG (default rknn-models-v1) and downloaded over plain HTTPS. No GitHub account is needed. Set GITHUB_TOKEN
+only to download from a private fork. Only the standard library is used, so this runs before anything else is
+installed.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
-import shutil
-import subprocess
 import sys
 import urllib.error
 import urllib.request
 
-REPO = os.environ.get("MODELS_REPO", "anand34577/nemotron-diarization")
+REPO = os.environ.get("MODELS_REPO", "anand34577/saywho")
 TAG = os.environ.get("MODELS_TAG", "rknn-models-v1")
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEST = os.environ.get("RKNN_DIR", os.path.join(HERE, "rknn_models"))
@@ -60,18 +56,11 @@ def sha256(path: str) -> str:
     return h.hexdigest()
 
 
-def via_gh(name: str) -> bool:
-    if not shutil.which("gh"):
-        return False
-    r = subprocess.run(["gh", "release", "download", TAG, "-R", REPO, "-p", name, "-D", DEST, "--clobber"])
-    return r.returncode == 0
-
-
 def via_https(name: str) -> bool:
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    headers = {"User-Agent": "nemotron-diarization"}
+    headers = {"User-Agent": "saywho"}
     if token:
-        # private repositories: resolve the asset through the API, then download it as a binary stream
+        # private forks: resolve the asset through the API, then download it as a binary stream
         headers["Authorization"] = f"Bearer {token}"
         api = f"https://api.github.com/repos/{REPO}/releases/tags/{TAG}"
         with urllib.request.urlopen(urllib.request.Request(api, headers=headers)) as r:
@@ -99,13 +88,11 @@ def fetch(name: str, expected: str) -> None:
         print(f"{name}: already present, checksum OK")
         return
     print(f"{name}: downloading from {REPO} release {TAG}")
-    ok = via_gh(name)
-    if not ok:
-        try:
-            ok = via_https(name)
-        except (urllib.error.URLError, KeyError) as e:
-            sys.exit(f"{name}: download failed ({e}).\nThe repository may be private: log in with `gh auth login` "
-                     f"or set GITHUB_TOKEN to a token with read access to {REPO}.")
+    try:
+        via_https(name)
+    except (urllib.error.URLError, KeyError) as e:
+        sys.exit(f"{name}: download failed ({e}). Check the internet connection and run this again; files that "
+                 "finished downloading are kept.")
     if sha256(path) != expected:
         os.remove(path)
         sys.exit(f"{name}: checksum mismatch, file removed. Try again.")
