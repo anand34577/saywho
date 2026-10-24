@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6cff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="t" x1="0" x2="1"><stop offset="0" stop-color="#b9a8ff"/><stop offset="1" stop-color="#67e8f9"/></linearGradient>
+</defs>
+<rect width="1200" height="300" rx="20" fill="#0d1014"/>
+<g transform="translate(80 86) scale(4)">
+<rect width="32" height="32" rx="8" fill="url(#g)"/>
+<path d="M7 9.5a2.5 2.5 0 0 1 2.5-2.5h8A2.5 2.5 0 0 1 20 9.5v4a2.5 2.5 0 0 1-2.5 2.5H12l-3.2 2.6V16H9.5A2.5 2.5 0 0 1 7 13.5z" fill="#fff"/>
+<path d="M14 19.5V18h4.5a3.5 3.5 0 0 0 3.5-3.5V12h.5a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5h-.3v2.6L19 21h-2.5a2.5 2.5 0 0 1-2.5-1.5z" fill="#fff" opacity=".7"/>
+</g>
+<text x="250" y="148" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="86" font-weight="700" fill="url(#t)">saywho</text>
+<text x="254" y="196" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="27" fill="#8a96a3">Who spoke when, in any recording. On your own hardware.</text>
+<g transform="translate(254 222)">
+<rect x="0" width="70" height="10" rx="5" fill="#9d8bff"/><rect x="150" width="110" height="10" rx="5" fill="#9d8bff"/><rect x="420" width="60" height="10" rx="5" fill="#9d8bff"/><rect x="700" width="90" height="10" rx="5" fill="#9d8bff"/>
+<rect x="76" y="18" width="66" height="10" rx="5" fill="#4cc3ff"/><rect x="268" y="18" width="140" height="10" rx="5" fill="#4cc3ff"/><rect x="560" y="18" width="130" height="10" rx="5" fill="#4cc3ff"/><rect x="800" y="18" width="60" height="10" rx="5" fill="#4cc3ff"/>
+<rect x="488" y="36" width="64" height="10" rx="5" fill="#ff9f43"/>
+</g>
+</svg>

@@ -1,0 +1,1 @@
+Something unclear or wrong on this page? [Open an issue](https://github.com/anand34577/saywho/issues/new/choose). These pages are edited in [docs/wiki](https://github.com/anand34577/saywho/tree/main/docs/wiki).

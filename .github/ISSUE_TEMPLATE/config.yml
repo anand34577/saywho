@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Guides and troubleshooting
+    url: https://github.com/anand34577/saywho/wiki
+    about: Step-by-step install guides, settings and fixes for common problems.
+  - name: Report a security problem
+    url: https://github.com/anand34577/saywho/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
